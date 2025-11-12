@@ -28,7 +28,7 @@
 * **產出檔案：**  
   * raw\_60m.parquet: 包含所有資產 60 分鐘 K 線的 Panel Data。  
   * raw\_daily.parquet: 包含所有資產日 K 線的 Panel Data。  
-  * earnings\_dates.parquet: (相依性) 根據規格書，您需要一個財報日期列表以執行「規則一」的數據清理 5。這個檔案需要從外部數據源獲取。
+  * earnings\_dates.parquet: (相依性) 根據規格書，您需要一個財報日期列表以執行「規則一」的數據清理 5。這個檔案需要從外部數據源獲取(推薦使用 yahoo_fin 的 python 套件)。
 
 ---
 
