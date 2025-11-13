@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import json
 import warnings
+import os
 
 # Suppress future warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -10,11 +11,16 @@ def get_data():
     """
     Downloads and saves yfinance data for the asset pool.
     """
+    # Get the absolute path of the script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     # Load the asset pool
-    with open("asset_pool.json", "r") as f:
+    asset_pool_path = os.path.join(script_dir, "asset_pool.json")
+    with open(asset_pool_path, "r") as f:
         asset_pool = json.load(f)
 
     # Clean the ticker symbols
+    # BRK.B needs to be BRK-B
     tickers = [asset.split(":")[1].replace('.', '-') for asset in asset_pool]
 
     # Download 60m data
@@ -43,7 +49,7 @@ def get_data():
         data_60m.index.names = ["timestamp", "symbol"]
         data_60m = data_60m.reorder_levels(["symbol", "timestamp"])
         data_60m = data_60m[['Open', 'High', 'Low', 'Close', 'Volume']]
-        data_60m.to_parquet("raw_60m.parquet")
+        data_60m.to_parquet(os.path.join(script_dir, "raw_60m.parquet"))
 
     # Format and save daily data
     if not data_daily.empty:
@@ -52,7 +58,7 @@ def get_data():
         data_daily.index.names = ["timestamp", "symbol"]
         data_daily = data_daily.reorder_levels(["symbol", "timestamp"])
         data_daily = data_daily[['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close']]
-        data_daily.to_parquet("raw_daily.parquet")
+        data_daily.to_parquet(os.path.join(script_dir, "raw_daily.parquet"))
 
 
 if __name__ == "__main__":
