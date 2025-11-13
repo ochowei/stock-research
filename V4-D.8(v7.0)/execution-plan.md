@@ -22,12 +22,26 @@
 * **執行：**  
   1. 讀取 asset\_pool.json。  
   2. **60m 數據：** 遍歷所有標的，使用 yfinance 下載 60m 頻率的 K 線數據（包含 RTH 和 ETH）。2222
-
   3. **Daily 數據：** 遍歷所有標的，下載 1d 頻率的 K 線數據，用於計算 G 組上下文特徵 3和 Y 標籤的 vol 單位 (T-1 ATR) 4。
 
 * **產出檔案：**  
-  * raw\_60m.parquet: 包含所有資產 60 分鐘 K 線的 Panel Data。  
-  * raw\_daily.parquet: 包含所有資產日 K 線的 Panel Data。  
+  * raw\_60m.parquet: 包含所有資產 60 分鐘 K 線的 Panel Data。
+    * 索引 (Index): ['symbol', 'timestamp']
+    * 欄位 (Columns):    
+      * Open (用於計算 K 棒形狀)    
+      * High (用於計算 ATR, MFI)    
+      * Low (用於計算 ATR, MFI, T 日進場判斷)    
+      * Close (用於計算 RSI, Z-Score)    
+      * Volume (用於計算 MFI, Vol_Ratio)
+  * raw\_daily.parquet: 包含所有資產日 K 線的 Panel Data。
+    * 索引 (Index): ['symbol', 'timestamp']
+    * 欄位 (Columns):   
+      * Open (用於 T+1 開盤價出場 p_exit)
+      * High (用於 T-1 Daily ATR)
+      * Low (用於 T-1 Daily ATR)
+      * Close (用於 T-1 收盤價進場 p, T-1 Daily ATR)
+      * Volume (用於 G 組 Amihud 流動性)
+      * Adj Close (G 組 Momentum/Z-Score 計算用)
   * ~earnings_dates.parquet: (根據您的決定，此檔案不再需要)~。
 
 ---
