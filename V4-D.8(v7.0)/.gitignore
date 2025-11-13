@@ -1,0 +1,3 @@
+# Ignore generated data files
+raw_60m.parquet
+raw_daily.parquet
