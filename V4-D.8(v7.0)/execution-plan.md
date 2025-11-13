@@ -1,4 +1,4 @@
-### **📈 專案 V4-D.8 (v7.0) 執行計畫**
+### **📈 專案 V4-D.8 (v7.0) 執行計畫 (修訂版 - 忽略財報過濾)**
 
 #### **步驟 0：專案初始化 (Setup)**
 
@@ -28,7 +28,7 @@
 * **產出檔案：**  
   * raw\_60m.parquet: 包含所有資產 60 分鐘 K 線的 Panel Data。  
   * raw\_daily.parquet: 包含所有資產日 K 線的 Panel Data。  
-  * earnings\_dates.parquet: (相依性) 根據規格書，您需要一個財報日期列表以執行「規則一」的數據清理 5。這個檔案需要從外部數據源獲取(推薦使用 yahoo_fin 的 python 套件)。
+  * ~earnings_dates.parquet: (根據您的決定，此檔案不再需要)~。
 
 ---
 
@@ -103,7 +103,7 @@
   1. 載入 features\_X\_T-1.parquet 和 labels\_Y.parquet。  
   2. 載入 earnings\_dates.parquet。  
   3. **合併：** 將 X 和 Y 矩陣對齊 (asset, timestamp)。  
-  4. **規則一 (財報)：** 刪除 T 日或 T+1 日區間內有財報的樣本 24。
+  4. ~**規則一 (財報)：** 刪除 T 日或 T+1 日區間內有財報的樣本 24。~
 
   5. **規則二 (未成交)：** 嚴格刪除所有 Fill\_Status 為 NO\_FILL (即 Y=0 或 Null) 的樣本 25。
 
