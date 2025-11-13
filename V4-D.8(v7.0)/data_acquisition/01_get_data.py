@@ -11,7 +11,7 @@ def get_data():
     Downloads and saves yfinance data for the asset pool.
     """
     # Load the asset pool
-    with open("V4-D.8(v7.0)/asset_pool.json", "r") as f:
+    with open("asset_pool.json", "r") as f:
         asset_pool = json.load(f)
 
     # Clean the ticker symbols
@@ -43,7 +43,7 @@ def get_data():
         data_60m.index.names = ["timestamp", "symbol"]
         data_60m = data_60m.reorder_levels(["symbol", "timestamp"])
         data_60m = data_60m[['Open', 'High', 'Low', 'Close', 'Volume']]
-        data_60m.to_parquet("V4-D.8(v7.0)/raw_60m.parquet")
+        data_60m.to_parquet("raw_60m.parquet")
 
     # Format and save daily data
     if not data_daily.empty:
@@ -52,7 +52,7 @@ def get_data():
         data_daily.index.names = ["timestamp", "symbol"]
         data_daily = data_daily.reorder_levels(["symbol", "timestamp"])
         data_daily = data_daily[['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close']]
-        data_daily.to_parquet("V4-D.8(v7.0)/raw_daily.parquet")
+        data_daily.to_parquet("raw_daily.parquet")
 
 
 if __name__ == "__main__":
