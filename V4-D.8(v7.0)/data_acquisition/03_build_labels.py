@@ -142,6 +142,21 @@ def build_labels():
     if final_labels is None:
         return
 
+    # --- Start of timestamp normalization ---
+    # Get the current index levels
+    asset_level = final_labels.index.get_level_values('asset')
+    timestamp_level = final_labels.index.get_level_values('T-1_timestamp')
+
+    # Normalize the timestamp level to .date()
+    normalized_timestamp = pd.to_datetime(timestamp_level).date
+
+    # Re-create the MultiIndex
+    final_labels.index = pd.MultiIndex.from_arrays(
+        [asset_level, normalized_timestamp],
+        names=['asset', 'T-1_timestamp']
+    )
+    # --- End of timestamp normalization ---
+
     # Save the final labels to a parquet file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, 'labels_Y.parquet')
