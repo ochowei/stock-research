@@ -1,0 +1,4 @@
+# Ignore generated files and directories
+models/
+*.joblib
+predictions_oos.csv
