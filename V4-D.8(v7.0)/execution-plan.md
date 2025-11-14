@@ -126,46 +126,65 @@
 
 ---
 
-#### **步驟 5：模型訓練與滾動驗證 (Training & Walk-Forward Validation)**
+#### **步驟 5：模型訓練與不確定性比較 (Uncertainty Bake-off)**
 
-此步驟是 3.3 節和 3.4 節的核心實作。
+此步驟擴展了原有的模型訓練，旨在比較三種不同的不確定性捕捉方案。
 
-* **目標：** 執行「滾動窗口驗證」並遵守「特徵標準化 SOP」。  
-* **執行：**  
-  1. 載入 model\_ready\_dataset.parquet。  
-  2. **定義滾動窗口 (k)：**  
-     * 設定 Train\_k 和 Test\_k 的時間範圍。
+* **目標：** 在滾動驗證框架下，並行訓練三種模型，並產出包含所有預測的單一結果檔案。
+* **依賴更新：** 此步驟的實作將需要更新 `data_acquisition/requirements.txt`，加入 `scikit-learn` 和 `lightgbm`。
+* **執行：**
+  1. 載入 `model_ready_dataset.parquet`。
+  2. **定義滾動窗口 (k)：**
+     * 設定 `Train_k` 和 `Test_k` 的時間範圍。
+  3. **在窗口 k 中循環：**
+     * **數據標準化 (Standardization)：**
+       * `scaler_k = StandardScaler()`
+       * `scaler_k.fit(Train_k[X_features])` (僅在 `Train_k` 上擬合)
+       * `X_train_scaled = scaler_k.transform(Train_k[X_features])`
+       * `X_test_scaled = scaler_k.transform(Test_k[X_features])`
+     * **模型訓練與預測 (Bake-off)：** 在**同一個**滾動窗口 `k` 中，並行訓練以下三個模型系列：
+       * **方案 A (兩階段模型)：**
+         1.  訓練 `model_A_Y = Ridge()` 來預測 `Y` (得到 `Y_pred_A`)。
+         2.  計算誤差 `Y_error = |Y_true - Y_pred_A|`。
+         3.  訓練 `model_A_Uncertainty = Ridge()` 來預測 `Y_error` (得到 `Y_uncertainty_A`)。
+       * **方案 B (分位數回歸)：**
+         1.  使用 `LGBMRegressor(objective='quantile', ...)` 或 `sklearn.linear_model.QuantileRegressor`。
+         2.  訓練 `model_B_Lower` (預測 Q0.1)。
+         3.  訓練 `model_B_Median` (預測 Q0.5，作為點預測)。
+         4.  訓練 `model_B_Upper` (預測 Q0.9)。
+       * **方案 C (貝氏回歸)：**
+         1.  訓練 `model_C_Bayesian = BayesianRidge()`。
+         2.  使用 `model_C_Bayesian.predict(..., return_std=True)` 進行預測，得到 `Y_pred_C` 和 `Y_std_C`。
+     * **儲存結果：** 儲存 `predictions_k`，其中包含 `Test_k` 的真實 Y 值以及來自 A, B, C 三個方案的所有預測結果。
+  4. **滾動 (Roll Forward)：** 移動窗口，重複步驟 3。
 
-  3. **在窗口 k 中循環：**  
-     * **擬合標量 (Fit Scaler)：** \* scaler\_k \= StandardScaler()  
-       * scaler\_k.fit(Train\_k\[X\_features\]) (僅在 Train\_k 上 fit！)
-
-     * **轉換數據 (Transform Data)：**  
-       * X\_train\_scaled \= scaler\_k.transform(Train\_k\[X\_features\])
-
-       * X\_test\_scaled \= scaler\_k.transform(Test\_k\[X\_features\]) (使用 scaler\_k 轉換 Test\_k)
-
-     * **訓練與預測 (Train & Predict)：**  
-       * model\_k.fit(X\_train\_scaled, Train\_k\[Y\]) (訓練通用模型)
-
-       * predictions\_k \= model\_k.predict(X\_test\_scaled)
-
-     * 儲存 predictions\_k（包含真實 Y 值和預測 Y 值）和 model\_k。  
-  4. **滾動 (Roll Forward)：** 移動窗口，重複步驟 3。  
-* **產出檔案：**  
-  * predictions\_oos.csv: 合併所有 predictions\_k 的帶外 (Out-of-Sample) 預測結果。  
-  * models/model\_fold\_{k}.joblib: 每個滾動窗口訓練出的模型檔案。
+* **產出檔案：**
+  * `predictions_oos.csv`: 一個合併所有 `predictions_k` 的帶外 (Out-of-Sample) 預測結果檔案。欄位應包含：
+    * `Y_true`
+    * `Y_pred_A`, `Y_uncertainty_A`
+    * `Y_pred_B_Lower`, `Y_pred_B_Median`, `Y_pred_B_Upper`
+    * `Y_pred_C`, `Y_std_C`
+  * `models/`: 此目錄將包含每個滾動窗口 `k` 訓練出的所有模型檔案 (例如 `model_A_Y_fold_{k}.joblib`, `model_B_Lower_fold_{k}.joblib` 等)。
 
 ---
 
-#### **步驟 6：回測分析 (Backtest Analysis)**
+#### **步驟 6：回測分析與模型比較**
 
-* **目標：** 分析 predictions\_oos.csv 的預測表現。  
-* **執行：**  
-  1. 載入 predictions\_oos.csv。  
-  2. 由於 Y 是「風險標準化回報」，您需要分析預測值 (Predicted Y) 與真實 Y 之間的相關性（例如 Spearman 相關性）。  
-  3. **模擬交易：** 根據預測的 Y 值（例如 Predicted Y \> 0.5）決定是否執行 v7.0 假設的交易（T-1 收盤價進場，T+1 開盤價出場 34）。
-
-  4. 計算投資組合的夏普比率 (Sharpe Ratio)、累積回報等績效指標。  
-* **產出檔案：**  
-  * backtest\_report.ipynb (或 .html): 包含績效圖表和分析結果的報告。
+* **目標：** 分析 `predictions_oos.csv` 的預測表現，並比較三種不確定性方案的優劣。
+* **執行：**
+  1. 載入 `predictions_oos.csv`。
+  2. **比較 (1) - 預測準確性 (Point Prediction Accuracy)：**
+     * 比較 `Y_pred_A`, `Y_pred_B_Median`, `Y_pred_C` 三個點預測哪個最準確。
+     * 使用指標：RMSE, MAE, Spearman 相關性。
+  3. **比較 (2) - 不確定性校準 (Uncertainty Calibration)：**
+     * 分析哪個不確定性指標與「實際預測誤差」(`|Y_true - Y_pred|`) 的相關性最高。
+     * 檢驗的配對：
+       * `Y_uncertainty_A` vs. `|Y_true - Y_pred_A|`
+       * 區間寬度 (`Y_pred_B_Upper - Y_pred_B_Lower`) vs. `|Y_true - Y_pred_B_Median|`
+       * `Y_std_C` vs. `|Y_true - Y_pred_C|`
+  4. **模擬交易 (基於最佳模型)：**
+     * 選擇在比較 (1) 和 (2) 中綜合表現最好的模型。
+     * 根據其預測值和不確定性設計交易策略（例如，僅在不確定性較低時進行交易）。
+     * 計算投資組合的夏普比率 (Sharpe Ratio)、累積回報等績效指標。
+* **產出檔案：**
+  * `backtest_report.ipynb` (或 .html): 包含所有比較分析、績效圖表和最終模型選擇結論的報告。
