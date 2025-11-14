@@ -187,4 +187,10 @@
      * 根據其預測值和不確定性設計交易策略（例如，僅在不確定性較低時進行交易）。
      * 計算投資組合的夏普比率 (Sharpe Ratio)、累積回報等績效指標。
 * **產出檔案：**
-  * `backtest_report.ipynb` (或 .html): 包含所有比較分析、績效圖表和最終模型選擇結論的報告。
+  * backtest_report.txt: 包含所有關鍵績效指標（Sharpe Ratio、累積回報）和「模型比較」結果的純文字檔案。
+
+  * cumulative_return.png: 顯示策略累積回報的圖檔。
+
+  * drawdown.png: 顯示策略回撤的圖檔。
+
+  * uncertainty_calibration.png: 比較三種不確定性模型校準度的圖檔。
