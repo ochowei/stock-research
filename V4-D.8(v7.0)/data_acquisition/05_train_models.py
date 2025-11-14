@@ -16,9 +16,12 @@ def main():
     """
     # --- Path Definition ---
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(script_dir, 'model_ready_dataset.parquet')
-    models_dir = os.path.join(script_dir, 'models')
-    output_path = os.path.join(script_dir, 'predictions_oos.csv')
+    # Go one level up to the project root from the script's location in 'data_acquisition'
+    project_root = os.path.join(script_dir, '..')
+
+    data_path = os.path.join(project_root, 'model_ready_dataset.parquet')
+    models_dir = os.path.join(project_root, 'models')
+    output_path = os.path.join(project_root, 'predictions_oos.csv')
 
     os.makedirs(models_dir, exist_ok=True)
 
@@ -111,7 +114,6 @@ def main():
         joblib.dump(model_C_Bayesian, os.path.join(models_dir, f'model_C_Bayesian_fold_{k+1}.joblib'))
 
         # --- Collect Predictions ---
-        # Assemble a DataFrame for the current fold's out-of-sample predictions.
         predictions_k = pd.DataFrame(index=X_test.index)
         predictions_k['Y_true'] = y_test
         predictions_k['fold'] = k + 1
@@ -127,7 +129,6 @@ def main():
         print(f"Fold {k+1} complete.")
 
     # --- Save All Predictions ---
-    # Concatenate predictions from all folds and save to a single CSV file.
     if all_predictions:
         print("\nSaving out-of-sample predictions...")
         final_predictions = pd.concat(all_predictions)

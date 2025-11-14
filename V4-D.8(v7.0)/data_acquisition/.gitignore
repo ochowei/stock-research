@@ -6,3 +6,8 @@ raw_daily.parquet
 features_X_T-1.parquet
 labels_Y.parquet
 model_ready_dataset.parquet
+
+# Ignore generated files and directories
+models/
+*.joblib
+predictions_oos.csv
