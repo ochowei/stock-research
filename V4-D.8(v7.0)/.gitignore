@@ -1,0 +1,5 @@
+# Ignore the models directory
+models/
+
+# Ignore the predictions file
+predictions_oos.csv

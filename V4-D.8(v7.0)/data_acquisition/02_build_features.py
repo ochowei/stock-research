@@ -16,7 +16,42 @@ def load_data():
     try:
         data_60m = pd.read_parquet(data_60m_path)
         data_daily = pd.read_parquet(data_daily_path)
-        print("Successfully loaded raw_60m.parquet and raw_daily.parquet.")
+
+        # Robustly clean both dataframes
+        def clean_dataframe(df, name, normalize_date=False):
+            if df is None:
+                return None
+
+            # Reset index to manipulate columns
+            df = df.reset_index()
+
+            # Ensure timestamp is a datetime object
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+            # Remove timezone if it exists
+            if df['timestamp'].dt.tz is not None:
+                df['timestamp'] = df['timestamp'].dt.tz_localize(None)
+
+            # Normalize to date if requested (for daily data)
+            if normalize_date:
+                df['timestamp'] = df['timestamp'].dt.normalize()
+
+            # Drop duplicates based on symbol and timestamp
+            original_rows = len(df)
+            df = df.drop_duplicates(subset=['symbol', 'timestamp'], keep='first')
+            new_rows = len(df)
+
+            if original_rows > new_rows:
+                print(f"Dropped {original_rows - new_rows} duplicate entries from {name} data.")
+
+            # Set the index back
+            df = df.set_index(['symbol', 'timestamp'])
+            return df
+
+        data_60m = clean_dataframe(data_60m, "60m", normalize_date=False)
+        data_daily = clean_dataframe(data_daily, "daily", normalize_date=True)
+
+        print("Successfully loaded and cleaned raw_60m.parquet and raw_daily.parquet.")
         return data_60m, data_daily
     except FileNotFoundError as e:
         print(f"Error: {e}")
@@ -339,6 +374,13 @@ def build_features():
     # Final check on the index and sorting
     final_features.index.names = ['asset', 'T-1_timestamp']
     final_features.sort_index(inplace=True)
+
+    # Normalize the timestamp to just the date part before saving
+    if isinstance(final_features.index, pd.MultiIndex):
+        final_features.index = final_features.index.set_levels(
+            final_features.index.get_level_values('T-1_timestamp').normalize(),
+            level='T-1_timestamp'
+        )
 
     # Save features
     script_dir = os.path.dirname(os.path.abspath(__file__))
