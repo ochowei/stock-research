@@ -4,3 +4,5 @@ raw_daily.parquet
 
 # Ignore generated feature files
 features_X_T-1.parquet
+labels_Y.parquet
+model_ready_dataset.parquet
