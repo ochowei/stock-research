@@ -14,7 +14,7 @@ def train_model_A():
     """
     # Load the dataset
     try:
-        df = pd.read_parquet('V4-D.8(v7.0)/ml_pipeline/model_ready_dataset.parquet')
+        df = pd.read_parquet('model_ready_dataset.parquet')
     except FileNotFoundError:
         print("Error: model_ready_dataset.parquet not found. Please run Step 4 first.")
         return
@@ -26,7 +26,7 @@ def train_model_A():
     all_oos_predictions = []
 
     # Create directory for models if it doesn't exist
-    model_dir = 'V4-D.8(v7.0)/ml_pipeline/models/scheme_A/'
+    model_dir = 'models/scheme_A/'
     os.makedirs(model_dir, exist_ok=True)
 
     for fold, (train_index, test_index) in enumerate(tscv.split(df)):
@@ -72,10 +72,10 @@ def train_model_A():
 
     # --- Combine and Save OOS Predictions ---
     oos_predictions_df = pd.concat(all_oos_predictions)
-    oos_predictions_df.to_csv('V4-D.8(v7.0)/ml_pipeline/predictions_oos_A.csv')
+    oos_predictions_df.to_csv('predictions_oos_A.csv')
 
     print("--- Model Training (Scheme A) Complete ---")
-    print(f"OOS predictions saved to V4-D.8(v7.0)/ml_pipeline/predictions_oos_A.csv")
+    print(f"OOS predictions saved to predictions_oos_A.csv")
     print(f"Models saved in {model_dir}")
 
 if __name__ == "__main__":
