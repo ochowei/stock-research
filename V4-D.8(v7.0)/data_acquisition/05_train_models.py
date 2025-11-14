@@ -134,7 +134,7 @@ def main():
         # --- Save Models ---
         print("Saving models for this fold...")
         joblib.dump(model_A_Y, os.path.join(MODELS_DIR, f'model_A_Y_fold_{fold_num}.joblib'))
-        joblib.dump(model_A_Uncertainty, os.path.in(MODELS_DIR, f'model_A_Uncertainty_fold_{fold_num}.joblib'))
+        joblib.dump(model_A_Uncertainty, os.path.join(MODELS_DIR, f'model_A_Uncertainty_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Lower, os.path.join(MODELS_DIR, f'model_B_Lower_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Median, os.path.join(MODELS_DIR, f'model_B_Median_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Upper, os.path.join(MODELS_DIR, f'model_B_Upper_fold_{fold_num}.joblib'))
