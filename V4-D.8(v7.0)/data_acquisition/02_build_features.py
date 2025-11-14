@@ -340,6 +340,22 @@ def build_features():
     final_features.index.names = ['asset', 'T-1_timestamp']
     final_features.sort_index(inplace=True)
 
+    # --- Start of timestamp normalization ---
+    # Get the current index levels
+    asset_level = final_features.index.get_level_values('asset')
+    timestamp_level = final_features.index.get_level_values('T-1_timestamp')
+
+    # Normalize the timestamp level to .date()
+    # We use pd.to_datetime to ensure it's parsed correctly before taking .date
+    normalized_timestamp = pd.to_datetime(timestamp_level).date
+
+    # Re-create the MultiIndex
+    final_features.index = pd.MultiIndex.from_arrays(
+        [asset_level, normalized_timestamp],
+        names=['asset', 'T-1_timestamp']
+    )
+    # --- End of timestamp normalization ---
+
     # Save features
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, 'features_X_T-1.parquet')
