@@ -126,71 +126,103 @@
 
 ---
 
-#### **步驟 5：模型訓練與不確定性比較 (Uncertainty Bake-off)**
+#### **步驟 5-1：模型訓練 (方案 A：兩階段 Ridge 模型)**
 
-此步驟擴展了原有的模型訓練，旨在比較三種不同的不確定性捕捉方案。
-
-* **目標：** 在滾動驗證框架下，並行訓練三種模型，並產出包含所有預測的單一結果檔案。
-* **依賴更新：** 此步驟的實作將需要更新 `data_acquisition/requirements.txt`，加入 `scikit-learn` 和 `lightgbm`。
+* **目標：** 使用兩階段的 Ridge 回歸，同時預測目標值 (Y) 和預測誤差（作為不確定性代理）。
+* **依賴 (Dependencies)：**
+  * `model_ready_dataset.parquet`: 清理過的、用於模型訓練的數據集。
 * **執行：**
   1. 載入 `model_ready_dataset.parquet`。
-  2. **定義滾動窗口 (k)：**
-     * 設定 `Train_k` 和 `Test_k` 的時間範圍。
-  3. **在窗口 k 中循環：**
-     * **數據標準化 (Standardization)：**
-       * `scaler_k = StandardScaler()`
-       * `scaler_k.fit(Train_k[X_features])` (僅在 `Train_k` 上擬合)
-       * `X_train_scaled = scaler_k.transform(Train_k[X_features])`
-       * `X_test_scaled = scaler_k.transform(Test_k[X_features])`
-     * **模型訓練與預測 (Bake-off)：** 在**同一個**滾動窗口 `k` 中，並行訓練以下三個模型系列：
-       * **方案 A (兩階段模型)：**
-         1.  訓練 `model_A_Y = Ridge()` 來預測 `Y` (得到 `Y_pred_A`)。
-         2.  計算誤差 `Y_error = |Y_true - Y_pred_A|`。
-         3.  訓練 `model_A_Uncertainty = Ridge()` 來預測 `Y_error` (得到 `Y_uncertainty_A`)。
-       * **方案 B (分位數回歸)：**
-         1.  使用 `LGBMRegressor(objective='quantile', ...)` 或 `sklearn.linear_model.QuantileRegressor`。
-         2.  訓練 `model_B_Lower` (預測 Q0.1)。
-         3.  訓練 `model_B_Median` (預測 Q0.5，作為點預測)。
-         4.  訓練 `model_B_Upper` (預測 Q0.9)。
-       * **方案 C (貝氏回歸)：**
-         1.  訓練 `model_C_Bayesian = BayesianRidge()`。
-         2.  使用 `model_C_Bayesian.predict(..., return_std=True)` 進行預測，得到 `Y_pred_C` 和 `Y_std_C`。
-     * **儲存結果：** 儲存 `predictions_k`，其中包含 `Test_k` 的真實 Y 值以及來自 A, B, C 三個方案的所有預測結果。
-  4. **滾動 (Roll Forward)：** 移動窗口，重複步驟 3。
+  2. 設計滾動驗證循環 (Walk-forward Validation)。
+  3. 在每個 Fold 中：
+     * 標準化特徵 (Standard Scaler)。
+     * **第一階段：** 訓練 Ridge 模型 (`model_A_Y`) 來預測 `Y`，得到 `Y_pred_A`。
+     * **計算誤差：** 計算 `Y_error = |Y_true - Y_pred_A|`。
+     * **第二階段：** 訓練另一個 Ridge 模型 (`model_A_Uncertainty`) 來預測 `Y_error`，得到 `Y_uncertainty_A`。
+     * 儲存該 Fold 的預測結果。
+* **產出檔案 (Output Files)：**
+  * `predictions_oos_A.csv`: 包含 `Y_true`, `Y_pred_A`, `Y_uncertainty_A` 的帶外預測結果。
+  * `models/scheme_A/`: 儲存每個 Fold 訓練好的 `model_A_Y` 和 `model_A_Uncertainty` 模型物件。
 
-* **產出檔案：**
-  * `predictions_oos.csv`: 一個合併所有 `predictions_k` 的帶外 (Out-of-Sample) 預測結果檔案。欄位應包含：
+---
+
+#### **步驟 5-2：模型訓練 (方案 B：分位數回歸)**
+
+* **目標：** 使用 LightGBM 的分位數回歸功能，直接預測目標值的特定分位數（例如 10%、50%、90%），以構建預測區間。
+* **依賴 (Dependencies)：**
+  * `model_ready_dataset.parquet`: 清理過的數據集。
+* **執行：**
+  1. 載入 `model_ready_dataset.parquet`。
+  2. 設計滾動驗證循環。
+  3. 在每個 Fold 中：
+     * 標準化特徵。
+     * **模型訓練：** 分別訓練三個 LGBMRegressor 模型：
+       * `model_B_Lower`: 設定 `objective='quantile'` 和 `alpha=0.1`。
+       * `model_B_Median`: 設定 `objective='quantile'` 和 `alpha=0.5` (作為點預測)。
+       * `model_B_Upper`: 設定 `objective='quantile'` 和 `alpha=0.9`。
+     * **儲存預測：** 儲存三個模型對應的預測結果。
+* **產出檔案 (Output Files)：**
+  * `predictions_oos_B.csv`: 包含 `Y_true`, `Y_pred_B_Lower`, `Y_pred_B_Median`, `Y_pred_B_Upper` 的預測結果。
+  * `models/scheme_B/`: 儲存每個 Fold 訓練好的三個分位數模型物件。
+
+---
+
+#### **步驟 5-3：模型訓練 (方案 C：貝氏回歸)**
+
+* **目標：** 使用貝氏回歸模型，在預測時同時產出預測值的平均值 (mean) 和標準差 (standard deviation)，後者可作為不確定性的度量。
+* **依賴 (Dependencies)：**
+  * `model_ready_dataset.parquet`: 清理過的數據集。
+* **執行：**
+  1. 載入 `model_ready_dataset.parquet`。
+  2. 設計滾動驗證循環。
+  3. 在每個 Fold 中：
+     * 標準化特徵。
+     * **模型訓練：** 訓練一個 `BayesianRidge` 模型 (`model_C_Bayesian`)。
+     * **預測與不確定性：** 使用 `.predict()` 方法時設定 `return_std=True`，直接得到預測平均值 `Y_pred_C` 和標準差 `Y_std_C`。
+     * **儲存預測：** 儲存預測結果。
+* **產出檔案 (Output Files)：**
+  * `predictions_oos_C.csv`: 包含 `Y_true`, `Y_pred_C`, `Y_std_C` 的預測結果。
+  * `models/scheme_C/`: 儲存每個 Fold 訓練好的貝氏回歸模型物件。
+
+---
+
+#### **步驟 6-1：預測結果合併**
+
+* **目標：** 將來自三個不同模型方案的帶外預測結果合併成一個統一的檔案，以供後續的綜合分析使用。
+* **依賴 (Dependencies)：**
+  * `predictions_oos_A.csv`: 方案 A 的預測結果。
+  * `predictions_oos_B.csv`: 方案 B 的預測結果。
+  * `predictions_oos_C.csv`: 方案 C 的預測結果。
+* **執行：**
+  1. 分別載入 `predictions_oos_A.csv`, `predictions_oos_B.csv`, `predictions_oos_C.csv`。
+  2. 確保三個檔案的索引 (asset, timestamp) 對齊。
+  3. 將三個檔案的欄位合併成一個寬表格 (wide-format DataFrame)。
+* **產出檔案 (Output Files)：**
+  * `predictions_oos_merged.csv`: 包含所有方案預測結果的單一檔案。欄位應包含：
     * `Y_true`
     * `Y_pred_A`, `Y_uncertainty_A`
     * `Y_pred_B_Lower`, `Y_pred_B_Median`, `Y_pred_B_Upper`
     * `Y_pred_C`, `Y_std_C`
-  * `models/`: 此目錄將包含每個滾動窗口 `k` 訓練出的所有模型檔案 (例如 `model_A_Y_fold_{k}.joblib`, `model_B_Lower_fold_{k}.joblib` 等)。
 
 ---
 
-#### **步驟 6：回測分析與模型比較**
+#### **步驟 6-2：回測分析與模型比較**
 
-* **目標：** 分析 `predictions_oos.csv` 的預測表現，並比較三種不確定性方案的優劣。
+* **目標：** 基於合併後的預測結果，全面評估三個方案的預測準確性和不確定性校準度，並進行模擬交易回測。
+* **依賴 (Dependencies)：**
+  * `predictions_oos_merged.csv`: 包含所有模型預測結果的合併檔案。
 * **執行：**
-  1. 載入 `predictions_oos.csv`。
-  2. **比較 (1) - 預測準確性 (Point Prediction Accuracy)：**
-     * 比較 `Y_pred_A`, `Y_pred_B_Median`, `Y_pred_C` 三個點預測哪個最準確。
-     * 使用指標：RMSE, MAE, Spearman 相關性。
-  3. **比較 (2) - 不確定性校準 (Uncertainty Calibration)：**
-     * 分析哪個不確定性指標與「實際預測誤差」(`|Y_true - Y_pred|`) 的相關性最高。
-     * 檢驗的配對：
-       * `Y_uncertainty_A` vs. `|Y_true - Y_pred_A|`
-       * 區間寬度 (`Y_pred_B_Upper - Y_pred_B_Lower`) vs. `|Y_true - Y_pred_B_Median|`
-       * `Y_std_C` vs. `|Y_true - Y_pred_C|`
-  4. **模擬交易 (基於最佳模型)：**
-     * 選擇在比較 (1) 和 (2) 中綜合表現最好的模型。
-     * 根據其預測值和不確定性設計交易策略（例如，僅在不確定性較低時進行交易）。
-     * 計算投資組合的夏普比率 (Sharpe Ratio)、累積回報等績效指標。
-* **產出檔案：**
-  * backtest_report.txt: 包含所有關鍵績效指標（Sharpe Ratio、累積回報）和「模型比較」結果的純文字檔案。
-
-  * cumulative_return.png: 顯示策略累積回報的圖檔。
-
-  * drawdown.png: 顯示策略回撤的圖檔。
-
-  * uncertainty_calibration.png: 比較三種不確定性模型校準度的圖檔。
+  1. 載入 `predictions_oos_merged.csv`。
+  2. **比較 (1) - 預測準確性：**
+     * 比較 `Y_pred_A`, `Y_pred_B_Median`, `Y_pred_C` 的點預測準確度 (RMSE, MAE, Spearman)。
+  3. **比較 (2) - 不確定性校準：**
+     * 分析各方案的不確定性指標 (`Y_uncertainty_A`, `Y_pred_B_Upper - Y_pred_B_Lower`, `Y_std_C`) 與實際預測誤差 `|Y_true - Y_pred|` 的相關性。
+  4. **模擬交易：**
+     * 選擇綜合表現最佳的模型。
+     * 設計交易策略（例如，結合點預測和不確定性進行過濾）。
+     * 計算夏普比率、累積回報、最大回撤等績效指標。
+* **產出檔案 (Output Files)：**
+  * `backtest_report.txt`: 包含模型比較結果和回測績效指標的文字報告。
+  * `cumulative_return.png`: 策略累積回報圖。
+  * `drawdown.png`: 策略回撤圖。
+  * `uncertainty_calibration.png`: 不確定性校準度比較圖。
