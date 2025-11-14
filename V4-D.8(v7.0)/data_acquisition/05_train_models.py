@@ -11,16 +11,16 @@ from sklearn.metrics import mean_squared_error
 
 # --- Configuration ---
 # Get the absolute path to the directory where the script is located
-# This is necessary to ensure the script can be run from any working directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR, 'data_acquisition')
+# The project root is one level up from the script directory
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
 # Input file
-MODEL_READY_DATASET_PATH = os.path.join(DATA_DIR, 'model_ready_dataset.parquet')
+MODEL_READY_DATASET_PATH = os.path.join(SCRIPT_DIR, 'model_ready_dataset.parquet')
 
 # Output files and directories
-PREDICTIONS_OOS_PATH = os.path.join(SCRIPT_DIR, 'predictions_oos.csv')
-MODELS_DIR = os.path.join(SCRIPT_DIR, 'models')
+PREDICTIONS_OOS_PATH = os.path.join(PROJECT_ROOT, 'predictions_oos.csv')
+MODELS_DIR = os.path.join(PROJECT_ROOT, 'models')
 
 # Create the models directory if it doesn't exist
 os.makedirs(MODELS_DIR, exist_ok=True)
