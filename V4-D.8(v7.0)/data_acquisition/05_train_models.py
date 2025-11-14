@@ -25,7 +25,9 @@ except FileNotFoundError:
 # --- 2. Define Features (X) and Target (Y) ---
 Y_COLUMN = 'Y'
 X_COLUMNS = [col for col in df.columns if col != Y_COLUMN]
-df.sort_index(level='timestamp', inplace=True)
+# Sort by the second level of the index (timestamp)
+# Using level=1 is more robust if the index level is unnamed
+df.sort_index(level=1, inplace=True)
 
 print("Data loaded and sorted successfully.")
 print(f"Number of samples: {len(df)}")
