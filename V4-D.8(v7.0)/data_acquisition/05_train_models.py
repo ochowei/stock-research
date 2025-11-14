@@ -41,6 +41,9 @@ def main():
     """Main function to run the model training and evaluation pipeline."""
     df = load_data(MODEL_READY_DATASET_PATH)
 
+    # Set the index names to ensure they are correct
+    df.index.names = ['symbol', 'timestamp']
+
     # Make sure the dataframe is sorted by timestamp before splitting
     # The index is a MultiIndex ('symbol', 'timestamp'), so we sort by the 'timestamp' level
     df = df.sort_index(level='timestamp')
@@ -131,7 +134,7 @@ def main():
         # --- Save Models ---
         print("Saving models for this fold...")
         joblib.dump(model_A_Y, os.path.join(MODELS_DIR, f'model_A_Y_fold_{fold_num}.joblib'))
-        joblib.dump(model_A_Uncertainty, os.path.join(MODELS_DIR, f'model_A_Uncertainty_fold_{fold_num}.joblib'))
+        joblib.dump(model_A_Uncertainty, os.path.in(MODELS_DIR, f'model_A_Uncertainty_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Lower, os.path.join(MODELS_DIR, f'model_B_Lower_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Median, os.path.join(MODELS_DIR, f'model_B_Median_fold_{fold_num}.joblib'))
         joblib.dump(model_B_Upper, os.path.join(MODELS_DIR, f'model_B_Upper_fold_{fold_num}.joblib'))
