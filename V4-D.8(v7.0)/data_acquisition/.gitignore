@@ -1,3 +1,6 @@
 # Ignore generated data files
 raw_60m.parquet
 raw_daily.parquet
+
+# Ignore generated feature files
+features_X_T-1.parquet

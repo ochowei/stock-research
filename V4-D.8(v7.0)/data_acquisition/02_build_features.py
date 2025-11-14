@@ -6,10 +6,9 @@ import pandas_ta as ta
 def load_data():
     """Loads the raw 60m and daily data from the data_acquisition directory."""
     # Get the directory of the current script to build robust paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Construct paths to the data files, located in the sibling 'data_acquisition' directory
-    data_dir = os.path.join(script_dir, '..', 'data_acquisition')
+    # Construct paths to the data files, now in the same directory
     data_60m_path = os.path.join(data_dir, 'raw_60m.parquet')
     data_daily_path = os.path.join(data_dir, 'raw_daily.parquet')
 
@@ -22,7 +21,7 @@ def load_data():
     except FileNotFoundError as e:
         print(f"Error: {e}")
         print(f"Could not find data files in {data_dir}.")
-        print("Please make sure you have run 'V4-D.8(v7.0)/data_acquisition/01_get_data.py' first.")
+        print("Please make sure you have run '01_get_data.py' first.")
         return None, None
 
 def calculate_base_metrics(data_60m):
@@ -342,7 +341,8 @@ def build_features():
     final_features.sort_index(inplace=True)
 
     # Save features
-    output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'features_X_T-1.parquet')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, 'features_X_T-1.parquet')
     final_features.to_parquet(output_path)
     print(f"Successfully saved final features to {output_path}")
     print(f"Final features shape: {final_features.shape}")
