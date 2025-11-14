@@ -4,6 +4,7 @@ import os
 import sys
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge, BayesianRidge
 from lightgbm import LGBMRegressor
 import joblib
@@ -51,7 +52,6 @@ def main():
     df.index.names = ['symbol', 'timestamp']
 
     # Make sure the dataframe is sorted by timestamp before splitting
-    # The index is a MultiIndex ('symbol', 'timestamp'), so we sort by the 'timestamp' level
     df = df.sort_index(level='timestamp')
 
     # Identify feature columns (X) and target column (Y)
@@ -83,13 +83,21 @@ def main():
         print(f"Train set size: {len(X_train)}")
         print(f"Test set size: {len(X_test)}")
 
-        # --- Feature Standardization SOP ---
-        print("Applying feature standardization SOP...")
+        # --- Feature Standardization and Imputation SOP ---
+        print("Applying feature standardization and imputation SOP...")
         scaler = StandardScaler()
-        scaler.fit(X_train)
-        X_train_scaled = scaler.transform(X_train)
+        imputer = SimpleImputer(strategy='mean')
+
+        # Fit the scaler and imputer ONLY on the training data
+        X_train_scaled = scaler.fit_transform(X_train)
+        imputer.fit(X_train_scaled)
+
+        # Transform the scaled training and testing data
+        X_train_imputed = imputer.transform(X_train_scaled)
         X_test_scaled = scaler.transform(X_test)
-        print("Feature standardization complete.")
+        X_test_imputed = imputer.transform(X_test_scaled)
+
+        print("Feature standardization and imputation complete.")
 
         # --- Model Training and Uncertainty Bake-off ---
         print("Starting model training and uncertainty bake-off...")
@@ -97,31 +105,31 @@ def main():
         # Scheme A
         print("Training Scheme A...")
         model_A_Y = Ridge()
-        model_A_Y.fit(X_train_scaled, y_train)
-        y_pred_A = model_A_Y.predict(X_test_scaled)
+        model_A_Y.fit(X_train_imputed, y_train)
+        y_pred_A = model_A_Y.predict(X_test_imputed)
 
-        y_error = np.abs(y_train - model_A_Y.predict(X_train_scaled))
+        y_error = np.abs(y_train - model_A_Y.predict(X_train_imputed))
         model_A_Uncertainty = Ridge()
-        model_A_Uncertainty.fit(X_train_scaled, y_error)
-        y_uncertainty_A = model_A_Uncertainty.predict(X_test_scaled)
+        model_A_Uncertainty.fit(X_train_imputed, y_error)
+        y_uncertainty_A = model_A_Uncertainty.predict(X_test_imputed)
 
         # Scheme B
         print("Training Scheme B...")
         model_B_Lower = LGBMRegressor(objective='quantile', alpha=0.1)
         model_B_Median = LGBMRegressor(objective='quantile', alpha=0.5)
         model_B_Upper = LGBMRegressor(objective='quantile', alpha=0.9)
-        model_B_Lower.fit(X_train_scaled, y_train)
-        model_B_Median.fit(X_train_scaled, y_train)
-        model_B_Upper.fit(X_train_scaled, y_train)
-        y_pred_B_Lower = model_B_Lower.predict(X_test_scaled)
-        y_pred_B_Median = model_B_Median.predict(X_test_scaled)
-        y_pred_B_Upper = model_B_Upper.predict(X_test_scaled)
+        model_B_Lower.fit(X_train_imputed, y_train)
+        model_B_Median.fit(X_train_imputed, y_train)
+        model_B_Upper.fit(X_train_imputed, y_train)
+        y_pred_B_Lower = model_B_Lower.predict(X_test_imputed)
+        y_pred_B_Median = model_B_Median.predict(X_test_imputed)
+        y_pred_B_Upper = model_B_Upper.predict(X_test_imputed)
 
         # Scheme C
         print("Training Scheme C...")
         model_C_Bayesian = BayesianRidge()
-        model_C_Bayesian.fit(X_train_scaled, y_train)
-        y_pred_C, y_std_C = model_C_Bayesian.predict(X_test_scaled, return_std=True)
+        model_C_Bayesian.fit(X_train_imputed, y_train)
+        y_pred_C, y_std_C = model_C_Bayesian.predict(X_test_imputed, return_std=True)
 
         print("Model training complete for this fold.")
 
@@ -146,6 +154,7 @@ def main():
         joblib.dump(model_B_Upper, os.path.join(MODELS_DIR, f'model_B_Upper_fold_{fold_num}.joblib'))
         joblib.dump(model_C_Bayesian, os.path.join(MODELS_DIR, f'model_C_Bayesian_fold_{fold_num}.joblib'))
         joblib.dump(scaler, os.path.join(MODELS_DIR, f'scaler_fold_{fold_num}.joblib'))
+        joblib.dump(imputer, os.path.join(MODELS_DIR, f'imputer_fold_{fold_num}.joblib'))
         print("Models saved.")
 
     # --- Finalize and Save Predictions ---
