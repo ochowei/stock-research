@@ -69,7 +69,7 @@
      * 計算 C 組：ETH 不完整 K 棒 (9 metrics \* 1 agg) \= 9 特徵 。
 
   5. **G 組 (4 特徵)：**  
-     * 使用 raw\_daily.parquet 計算 X\_34 (Beta), X\_35 (Momentum), X\_36 (Z-Score), X\_37 (Amihud) 。
+     * 使用 raw\_daily.parquet 計算 X\_34 (Beta - 126天), X\_35 (Momentum), X\_36 (Z-Score - 126天), X\_37 (Amihud) 。
 
   6. 將所有 67 個特徵合併為一個以 (asset, T-1 timestamp) 為索引的特徵矩陣。  
 * **產出檔案：**  
