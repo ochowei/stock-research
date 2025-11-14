@@ -55,6 +55,13 @@ for k, (train_index, test_index) in enumerate(tscv.split(df)):
     scaler_k = StandardScaler()
     X_train_k_scaled = scaler_k.fit_transform(X_train_k)
     X_test_k_scaled = scaler_k.transform(X_test_k)
+
+    # Impute NaNs that may result from scaling columns with zero variance.
+    # This happens when a feature has the same value for all samples in the
+    # training fold, leading to a standard deviation of 0.
+    X_train_k_scaled = np.nan_to_num(X_train_k_scaled)
+    X_test_k_scaled = np.nan_to_num(X_test_k_scaled)
+
     print("Features standardized according to SOP.")
 
     # --- 6. Model Uncertainty Bake-off ---
