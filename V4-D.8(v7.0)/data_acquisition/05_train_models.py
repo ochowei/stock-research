@@ -41,6 +41,12 @@ def main():
     """Main function to run the model training and evaluation pipeline."""
     df = load_data(MODEL_READY_DATASET_PATH)
 
+    # Check if the dataframe is empty
+    if df.empty:
+        print("Error: The loaded dataset is empty. Cannot proceed with model training.")
+        print("This might be because the data processing pipeline did not produce any valid samples.")
+        sys.exit(1)
+
     # Set the index names to ensure they are correct
     df.index.names = ['symbol', 'timestamp']
 
