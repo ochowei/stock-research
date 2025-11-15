@@ -158,22 +158,24 @@ def apply_scheme_c(base_metrics):
         'ETH'
     )
 
-    # 2. Tag Full vs Partial bars
-    # Calculate time difference between consecutive bars for each symbol
-    # Reset index to work with 'timestamp' as a column
+    # 2. Tag Full vs Partial bars (新邏輯)
+    base_metrics['bar_type'] = 'Full' # 預設全部為 Full
+
+    # 找出每天最後一根 ETH K 棒
     base_metrics_reset = base_metrics.reset_index()
-    # Ensure the timestamp column is sorted before diff
-    base_metrics_reset = base_metrics_reset.sort_values(['symbol', 'timestamp'])
-    base_metrics_reset['duration'] = base_metrics_reset.groupby('symbol')['timestamp'].diff().dt.total_seconds()
+    eth_bars = base_metrics_reset[base_metrics_reset['session'] == 'ETH']
 
-    # Forward fill the NaN duration for the first bar of each symbol
-    base_metrics_reset['duration'] = base_metrics_reset.groupby('symbol')['duration'].bfill()
+    if not eth_bars.empty:
+        # 按 (symbol, date) 分組，找到最後的時間戳
+        last_eth_indices = eth_bars.groupby(
+            [pd.Grouper(key='symbol'), pd.Grouper(key='timestamp', freq='D')]
+        )['timestamp'].idxmax() # 找出最後一根 K 棒的索引
 
-    # A full bar is 60 minutes (3600 seconds)
-    base_metrics_reset['bar_type'] = np.where(base_metrics_reset['duration'] == 3600, 'Full', 'Partial')
+        # 將這些索引在 'bar_type' 欄位中標記為 'Partial'
+        # 我們需要使用 .loc 來安全地修改原始 DataFrame
+        base_metrics.loc[base_metrics_reset.loc[last_eth_indices].set_index(['symbol', 'timestamp']).index, 'bar_type'] = 'Partial'
 
-    # Restore the original index
-    base_metrics = base_metrics_reset.set_index(['symbol', 'timestamp'])
+    print("Scheme C (v2) applied. RTH bars are Full, last ETH bar is Partial.")
 
     # 3. Split the data
     rth_full_bars = base_metrics[(base_metrics['session'] == 'RTH') & (base_metrics['bar_type'] == 'Full')]
