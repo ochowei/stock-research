@@ -39,6 +39,16 @@ else:
     print("警告：'Fill_Status' 欄位不存在，無法應用清理規則。")
     cleaned_df = merged_df
 
+
+print(f"清理 'NaN' 特徵值... (目前筆數: {len(cleaned_df)})")
+# 移除任何欄位 (包含 X 或 Y) 中含有 NaN 的整筆樣本
+# 你的標籤 Y 也可能因為 vol=0 而產生 NaN
+initial_rows = len(cleaned_df)
+cleaned_df.dropna(inplace=True) 
+rows_removed = initial_rows - len(cleaned_df)
+print(f"清理完畢，共刪除 {rows_removed} 筆含有 'NaN' 的樣本。")
+
+
 # 4. 儲存產出
 print(f"儲存清理後的數據至 {output_path}...")
 cleaned_df.to_parquet(output_path)
