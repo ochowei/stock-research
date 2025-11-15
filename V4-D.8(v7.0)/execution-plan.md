@@ -79,32 +79,21 @@
 
 #### **步驟 3：標籤工程 (Label Engineering \- Y)**
 
-此步驟建立 v7.0 的「動態風險標準化回報」回歸標籤 。
+此步驟建立 v7.0 的「動態風險標準化回報」回歸標籤，並模擬「市價單」進場以確保 100% 成交。
 
-* **目標：** 計算 Y 標籤（回歸值）。  
-* **執行：**  
-  1. 載入 raw\_60m.parquet 和 raw\_daily.parquet。  
-  2. **計算輸入參數 (T-1 日)：**  
-     * p (進場價格) \= T-1 Close 。
-
-     * vol (波動率單位) \= T-1 日的 14 天 ATR (來自 Daily 數據) 。
-
-  3. **計算結算價格 (T+1 日)：**  
-     * p\_exit (結算價格) \= T+1 日的開盤價。
-
-  4. **情境判斷：**  
-     * **情境 B (未成交)：** 檢查 T 日的 60m Low 是否曾觸及 p。若無，標記為 NO\_FILL。
-
-     * **情境 A (成交)：** 若 T 日 60m Low 觸及 p，則計算標籤。
-
-  5. **Y 標籤計算 (情境 A)：**  
-     * Y \= (p\_exit \- p) / vol。
-
-  6. **Y 標籤處理 (情境 B)：**  
-     * Y \= 0 (或 Null)。
-
-* **產出檔案：**  
-  * labels\_Y.parquet: 包含 (asset, T-1 timestamp) 索引及對應的 Y 值和 Fill\_Status (e.g., 'FILLED', 'NO\_FILL')。
+* **目標：** 計算 Y 標籤（回歸值）。
+* **執行：**
+  1. 載入 `raw_daily.parquet`。
+  2. **計算輸入參數：**
+     * `p` (進場價格) = **T Open** (使用 `.shift(-1)`)。
+     * `vol` (波動率單位) = T-1 日的 14 天 ATR。
+  3. **計算出場價格：**
+     * `p_exit` (出場價格) = **T+1 Open** (使用 `.shift(-2)`)。
+  4. **Y 標籤計算：**
+     * 由於模擬市價單，`Fill_Status` 將永遠為 `'FILLED'`。
+     * 只要 `p`, `p_exit`, `vol` 皆有效，則 `Y = (p_exit - p) / vol`。
+* **產出檔案：**
+  * `labels_Y.parquet`: 包含 (asset, T-1 timestamp) 索引及對應的 `Y` 值和 `Fill_Status` (此欄位值恆為 'FILLED')。
 
 ---
 
