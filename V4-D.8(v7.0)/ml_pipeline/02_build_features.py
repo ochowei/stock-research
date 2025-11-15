@@ -327,6 +327,9 @@ def build_features():
     # Merge A, B, and C which are already daily
     features_abc = features_a.join(features_b, how='outer').join(features_c, how='outer')
 
+    # --- FIX: Rename index to match features_g_shifted before joining ---
+    features_abc.index.names = ['asset', 'T-1_timestamp']
+
     # Shift G features to align with T-1 timestamp
     features_g_shifted = features_g.groupby(level='symbol').shift(1)
 
