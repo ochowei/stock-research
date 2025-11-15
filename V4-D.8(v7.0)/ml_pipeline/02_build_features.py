@@ -103,8 +103,8 @@ def calculate_base_metrics(data_60m):
 
         try:
             bbands = ta.bbands(group['Close'], length=20)
-            if isinstance(bbands, pd.DataFrame) and all(c in bbands.columns for c in ['BBU_20_2.0', 'BBL_20_2.0', 'BBM_20_2.0']):
-                group['BBWidth_20_60m'] = (bbands['BBU_20_2.0'] - bbands['BBL_20_2.0']) / bbands['BBM_20_2.0']
+            if isinstance(bbands, pd.DataFrame) and all(c in bbands.columns for c in ['BBU_20_2.0_2.0', 'BBL_20_2.0_2.0', 'BBM_20_2.0_2.0']):
+                group['BBWidth_20_60m'] = (bbands['BBU_20_2.0_2.0'] - bbands['BBL_20_2.0_2.0']) / bbands['BBM_20_2.0_2.0']
             else:
                 group['BBWidth_20_60m'] = np.nan
         except Exception as e:
@@ -326,6 +326,9 @@ def build_features():
     # Combine features
     # Merge A, B, and C which are already daily
     features_abc = features_a.join(features_b, how='outer').join(features_c, how='outer')
+
+    # --- FIX: Rename index to match features_g_shifted before joining ---
+    features_abc.index.names = ['asset', 'T-1_timestamp']
 
     # Shift G features to align with T-1 timestamp
     features_g_shifted = features_g.groupby(level='symbol').shift(1)
