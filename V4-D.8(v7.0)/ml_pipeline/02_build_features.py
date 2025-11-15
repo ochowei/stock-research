@@ -357,6 +357,47 @@ def build_features():
     # Now, join with G-group features
     final_features = features_abc.join(features_g_shifted, how='left')
 
+    # --- Feature Merge Diagnostics ---
+    g_cols = ['X_34_Beta_6M', 'X_35_Momentum_6_1M', 'X_36_Z_Score_126_Daily', 'X_37_Liquidity_Amihud']
+    abc_cols = [col for col in final_features.columns if col not in g_cols]
+
+    shape_abc = features_abc.shape
+    shape_g = features_g_shifted.shape
+    shape_final = final_features.shape
+
+    # Identify rows with any NaNs in each feature group
+    nan_in_g_group = final_features[g_cols].isnull().any(axis=1)
+    nan_in_abc_group = final_features[abc_cols].isnull().any(axis=1)
+
+    # Calculate the intersection of NaN conditions
+    X = (~nan_in_abc_group & nan_in_g_group).sum()  # NaNs only in G
+    Y = (nan_in_abc_group & ~nan_in_g_group).sum()  # NaNs only in ABC
+    Z = (nan_in_abc_group & nan_in_g_group).sum()   # NaNs in both
+
+    # W is the remainder of rows, which have no NaNs in either group
+    W = shape_final[0] - (X + Y + Z)
+
+    # D is the count of rows where ALL columns are NaN
+    rows_to_be_dropped = final_features.isnull().all(axis=1).sum()
+
+    print("\n--- Feature Merge Diagnostics (Step 02) ---")
+    print(f"Shape of ABC Features (60m-derived): {shape_abc}")
+    print(f"Shape of G Features (Daily-derived): {shape_g}")
+    print(f"Shape of Final Merged (pre-dropna 'all'): {shape_final}")
+    print(f"\nTotal Merged Rows: {shape_final[0]}")
+    print(f"Rows with NaNs ONLY in G-Group (X_34-X_37): {X}")
+    print(f"Rows with NaNs ONLY in ABC-Group (X_T1...): {Y}")
+    print(f"Rows with NaNs in BOTH groups: {Z}")
+    print(f"Rows with NO NaNs (Complete): {W}")
+
+    # Verification check
+    check_sum = X + Y + Z + W
+    print(f"(Check: X + Y + Z + W should equal C) -> {check_sum} == {shape_final[0]} -> {check_sum == shape_final[0]}")
+
+    print(f"\nRows to be dropped by 'dropna(how='all')': {rows_to_be_dropped}")
+    print("--- End of Report ---\n")
+    # --- End of Diagnostics ---
+
     # Drop rows with all NaN values, which can result from joins with no matching data
     final_features.dropna(how='all', inplace=True)
 
