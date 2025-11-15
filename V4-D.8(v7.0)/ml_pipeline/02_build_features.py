@@ -242,8 +242,8 @@ def calculate_feature_group_c(eth_partial_bars):
     print("Calculated features for ETH partial bars.")
     return last_partial_features
 
-def _calculate_beta(data_daily, market_symbol='VOO', window=252):
-    """Calculates 12-month (252-day) beta."""
+def _calculate_beta(data_daily, market_symbol='VOO', window=126):
+    """Calculates 6-month (126-day) beta."""
     market_returns = data_daily.loc[market_symbol]['Adj Close'].pct_change()
 
     betas = {}
@@ -258,7 +258,7 @@ def _calculate_beta(data_daily, market_symbol='VOO', window=252):
         betas[symbol] = beta
 
     beta_s = pd.concat(betas)
-    beta_s.name = 'X_34_Beta_12M'
+    beta_s.name = 'X_34_Beta_6M'
     return beta_s
 
 def _calculate_momentum(data_daily, window=126, lag=21):
@@ -267,12 +267,12 @@ def _calculate_momentum(data_daily, window=126, lag=21):
     momentum.name = 'X_35_Momentum_6_1M'
     return momentum
 
-def _calculate_z_score_daily(data_daily, window=200):
-    """Calculates 200-day Z-Score."""
+def _calculate_z_score_daily(data_daily, window=126):
+    """Calculates 126-day Z-Score."""
     rolling_mean = data_daily.groupby('symbol')['Adj Close'].rolling(window=window).mean().reset_index(0, drop=True)
     rolling_std = data_daily.groupby('symbol')['Adj Close'].rolling(window=window).std().reset_index(0, drop=True)
     z_score = ((data_daily['Adj Close'] - rolling_mean) / rolling_std)
-    z_score.name = 'X_36_Z_Score_200_Daily'
+    z_score.name = 'X_36_Z_Score_126_Daily'
     return z_score
 
 def _calculate_amihud_liquidity(data_daily):
