@@ -327,22 +327,30 @@ def build_features():
     # Merge A, B, and C which are already daily
     features_abc = features_a.join(features_b, how='outer').join(features_c, how='outer')
 
-    # --- FIX: Rename index to match features_g_shifted before joining ---
-    features_abc.index.names = ['asset', 'T-1_timestamp']
-
     # Shift G features to align with T-1 timestamp
     features_g_shifted = features_g.groupby(level='symbol').shift(1)
 
-    # --- 新增 G 組索引標準化 ---
-    if not features_g_shifted.empty:
-        asset_level_g = features_g_shifted.index.get_level_values('symbol')
-        timestamp_level_g = features_g_shifted.index.get_level_values('timestamp')
-        normalized_timestamp_g = pd.to_datetime(timestamp_level_g).date
-        features_g_shifted.index = pd.MultiIndex.from_arrays(
-            [asset_level_g, normalized_timestamp_g],
-            names=['asset', 'T-1_timestamp'] # 確保索引名稱與 abc 一致
+    # --- Bug 修復：在 Join 之前標準化所有索引 ---
+
+    # 1. 標準化 ABC
+    if not features_abc.empty:
+        # The index names from groupby are 'symbol' and 'timestamp'
+        asset_abc = features_abc.index.get_level_values('symbol')
+        ts_abc = pd.to_datetime(features_abc.index.get_level_values('timestamp')).date
+        features_abc.index = pd.MultiIndex.from_arrays(
+            [asset_abc, ts_abc],
+            names=['asset', 'T-1_timestamp']
         )
-    # --- 標準化結束 ---
+
+    # 2. 標準化 G
+    if not features_g_shifted.empty:
+        asset_g = features_g_shifted.index.get_level_values('symbol')
+        ts_g = pd.to_datetime(features_g_shifted.index.get_level_values('timestamp')).date
+        features_g_shifted.index = pd.MultiIndex.from_arrays(
+            [asset_g, ts_g],
+            names=['asset', 'T-1_timestamp'] # 確保索引名稱一致
+        )
+    # --- 修復結束 ---
 
     # Now, join with G-group features
     final_features = features_abc.join(features_g_shifted, how='left')
@@ -351,24 +359,9 @@ def build_features():
     final_features.dropna(how='all', inplace=True)
 
     # Final check on the index and sorting
-    final_features.index.names = ['asset', 'T-1_timestamp']
+    # (The index names 'asset' and 'T-1_timestamp' are now set before the join)
     final_features.sort_index(inplace=True)
 
-    # --- Start of timestamp normalization ---
-    # Get the current index levels
-    asset_level = final_features.index.get_level_values('asset')
-    timestamp_level = final_features.index.get_level_values('T-1_timestamp')
-
-    # Normalize the timestamp level to .date()
-    # We use pd.to_datetime to ensure it's parsed correctly before taking .date
-    normalized_timestamp = pd.to_datetime(timestamp_level).date
-
-    # Re-create the MultiIndex
-    final_features.index = pd.MultiIndex.from_arrays(
-        [asset_level, normalized_timestamp],
-        names=['asset', 'T-1_timestamp']
-    )
-    # --- End of timestamp normalization ---
 
     # Save features
     script_dir = os.path.dirname(os.path.abspath(__file__))
