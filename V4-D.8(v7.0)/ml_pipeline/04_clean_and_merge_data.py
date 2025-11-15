@@ -16,15 +16,57 @@ print("讀取特徵數據...")
 features_df = pd.read_parquet(features_path)
 print(f"特徵數據讀取完畢，共 {len(features_df)} 筆。")
 
+# --- 特徵 (X) NaN 診斷報告 ---
+print("\n--- 特徵 (X) NaN 診斷報告 ---")
+total_rows_x = len(features_df)
+print(f"總行數: {total_rows_x}")
+nan_in_features = features_df.isnull().sum()
+nan_in_features = nan_in_features[nan_in_features > 0]
+if not nan_in_features.empty:
+    print("發現 NaN 的特徵 (僅列出 > 0%):")
+    nan_in_features.sort_values(ascending=False, inplace=True)
+    for col, count in nan_in_features.items():
+        percentage = (count / total_rows_x) * 100
+        print(f"- {col}: {count} NaN ({percentage:.2f}%)")
+else:
+    print("特徵數據中無 NaN。")
+print("--- 報告結束 ---\n")
+
+
 print("讀取標籤數據...")
 labels_df = pd.read_parquet(labels_path)
 print(f"標籤數據讀取完畢，共 {len(labels_df)} 筆。")
+
+# --- 標籤 (Y) NaN 診斷報告 ---
+print("\n--- 標籤 (Y) NaN 診斷報告 ---")
+total_rows_y = len(labels_df)
+print(f"總行數: {total_rows_y}")
+nan_in_labels = labels_df['Y'].isnull().sum()
+if nan_in_labels > 0:
+    percentage = (nan_in_labels / total_rows_y) * 100
+    print(f"- Y: {nan_in_labels} NaN ({percentage:.2f}%)")
+else:
+    print("標籤數據中無 NaN。")
+print("--- 報告結束 ---\n")
+
 
 # 2. 合併數據 (Inner Join)
 print("合併特徵與標籤數據...")
 # The execution plan specifies that both files are indexed by ('asset', 'T-1_timestamp')
 merged_df = pd.merge(features_df, labels_df, left_index=True, right_index=True, how='inner')
 print(f"數據合併完畢，共 {len(merged_df)} 筆。")
+
+# --- 合併後 (Merged) NaN 診斷報告 ---
+print("\n--- 合併後 (Merged) NaN 診斷報告 ---")
+total_rows_merged = len(merged_df)
+print(f"合併後總行數: {total_rows_merged}")
+rows_with_nan = merged_df.isnull().any(axis=1).sum()
+if total_rows_merged > 0:
+    percentage = (rows_with_nan / total_rows_merged) * 100
+    print(f"即將因 NaN 刪除的行數: {rows_with_nan} ({percentage:.2f}%)")
+else:
+    print("合併後的數據集為空。")
+print("--- 報告結束 ---\n")
 
 
 # 3. 應用清理規則 (規則二：未成交)
