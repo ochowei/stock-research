@@ -51,13 +51,26 @@ def train_model_A():
         # --- Stage 1: Predict Y ---
         model_A_Y = Ridge(alpha=1.0)
         model_A_Y.fit(X_train_scaled, y_train)
+
+        # 在「測試集」上產生第一階段預測 (用於 OOS 儲存)
         y_pred_A = model_A_Y.predict(X_test_scaled)
 
         # --- Stage 2: Predict Uncertainty ---
-        y_error = np.abs(y_test - y_pred_A)
+
+        # (修正開始)
+        # 1. 在「訓練集」上產生預測
+        y_pred_train_A = model_A_Y.predict(X_train_scaled)
+
+        # 2. 在「訓練集」上計算誤差
+        y_error_train = np.abs(y_train - y_pred_train_A)
+
+        # 3. 訓練不確定性模型 (使用訓練集的 X 和訓練集的 error)
         model_A_Uncertainty = Ridge(alpha=1.0)
-        model_A_Uncertainty.fit(X_train_scaled, y_error)
+        model_A_Uncertainty.fit(X_train_scaled, y_error_train)
+
+        # 4. 在「測試集」上預測不確定性
         y_uncertainty_A = model_A_Uncertainty.predict(X_test_scaled)
+        # (修正結束)
 
         # --- Store OOS Predictions ---
         fold_predictions = pd.DataFrame({
