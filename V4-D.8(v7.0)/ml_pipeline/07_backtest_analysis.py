@@ -11,7 +11,10 @@ def calculate_performance_metrics(returns):
     """Calculates performance metrics for a given returns series."""
     cumulative_return = (1 + returns).cumprod()
     total_return = cumulative_return.iloc[-1] - 1
-    sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)  # Assuming daily returns
+    if returns.std() == 0:
+        sharpe_ratio = 0.0
+    else:
+        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)  # Assuming daily returns
 
     roll_max = cumulative_return.cummax()
     drawdown = cumulative_return / roll_max - 1.0
@@ -92,12 +95,34 @@ def main():
         plt.savefig(uncertainty_plot)
         plt.close()
 
-        # d. Trading Simulation (using Model C as the best model)
-        f.write("3. Trading Simulation (Model C)\n")
+        # d. Trading Simulation
+
+        # --- Strategy Parameters ---
+        # 選擇要回測的模型 ('A', 'B', 'C')
+        STRATEGY_MODEL = 'B'
+        # 預測值門檻 (Y_pred > ?)
+        PRED_THRESHOLD = 0.2
+        # 不確定性門檻 (Uncertainty < ?) - 注意 Model B 的不確定性範圍不同
+        UNCERT_THRESHOLD = 1.0
+        # --- End Parameters ---
+
+        f.write(f"3. Trading Simulation (Model {STRATEGY_MODEL})\n")
         f.write("---------------------------------\n")
 
-        # Strategy: Long when Y_pred > 0.5 and Uncertainty < 0.8
-        long_signals = (df['Y_pred_C'] > 0.5) & (df['Uncertainty_C'] < 0.8)
+        if STRATEGY_MODEL == 'B':
+            pred_col = 'Y_pred_B_Median'
+            uncert_col = 'Uncertainty_B' # 來自 Y_pred_B_Upper - Y_pred_B_Lower
+        elif STRATEGY_MODEL == 'A':
+            pred_col = 'Y_pred_A'
+            uncert_col = 'Uncertainty_A'
+        else: # 預設為 C
+            pred_col = 'Y_pred_C'
+            uncert_col = 'Uncertainty_C'
+
+        long_signals = (df[pred_col] > PRED_THRESHOLD) & (df[uncert_col] < UNCERT_THRESHOLD)
+
+        f.write(f"Strategy: Model {STRATEGY_MODEL}, PRED_THRESHOLD > {PRED_THRESHOLD}, UNCERT_THRESHOLD < {UNCERT_THRESHOLD}\n")
+        f.write(f"Total Signals Generated: {long_signals.sum()}\n")
 
         # Assuming Y_true represents the return for the period if we enter a trade
         returns = pd.Series(np.where(long_signals, df['Y_true'], 0), index=df.index)
