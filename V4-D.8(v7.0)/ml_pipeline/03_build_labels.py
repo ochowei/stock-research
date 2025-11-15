@@ -51,11 +51,9 @@ def calculate_label_inputs(data_daily):
             length=14
         )
 
-        # Assign 'p' (T-1 Close)
-        symbol_data['p'] = symbol_data['Close']
-
-        # Calculate 'p_exit' (T+1 Open)
-        symbol_data['p_exit'] = symbol_data['Open'].shift(-1)
+        # --- New logic (T Open entry, T+1 Open exit) ---
+        symbol_data['p'] = symbol_data['Open'].shift(-1)      # p = T Open
+        symbol_data['p_exit'] = symbol_data['Open'].shift(-2)  # p_exit = T+1 Open
 
         # Add symbol back for MultiIndex
         symbol_data['symbol'] = symbol
@@ -70,48 +68,24 @@ def calculate_label_inputs(data_daily):
     return labels_df
 
 def determine_fill_status_and_calculate_y(labels_df, data_60m):
-    """
-    Determines the fill status for day T and calculates the Y label.
-    """
-    if labels_df is None or data_60m is None:
-        return None
+    # ... (data_60m is no longer used but kept for compatibility)
 
-    # --- Pre-computation for efficiency ---
-    # Get the date part of the 60m timestamps
-    data_60m['date'] = data_60m.index.get_level_values('timestamp').date
-    # Find the minimum low for each symbol and day T
-    min_low_t = data_60m.groupby(['symbol', 'date'])['Low'].min()
-
-    # --- Row-by-row processing ---
     results = []
     for (symbol, t_minus_1_timestamp), row in labels_df.iterrows():
         p = row['p']
         p_exit = row['p_exit']
         vol = row['vol']
 
-        # Determine day T by adding one day to T-1
-        t_date = (t_minus_1_timestamp + pd.Timedelta(days=1)).date()
-
-        fill_status = 'NO_FILL'
-        y = 0.0
+        fill_status = 'FILLED' # Always filled for market order
+        y = np.nan             # Default to NaN
 
         try:
-            # Check if the min low on day T was <= p
-            if min_low_t.loc[(symbol, t_date)] <= p:
-                fill_status = 'FILLED'
-                # Calculate Y only if vol is not zero to avoid division by zero
-                if vol is not None and vol > 0:
-                    y = (p_exit - p) / vol
-                else:
-                    y = np.nan # Or some other indicator of an issue
-
-        except KeyError:
-            # This happens if there is no 60m data for day T for that symbol
-            # The default of NO_FILL and Y=0 is appropriate here
-            pass
+            # Calculate Y only if all necessary data is valid and vol > 0
+            if pd.notna(p) and pd.notna(p_exit) and pd.notna(vol) and vol > 0:
+                y = (p_exit - p) / vol
         except Exception as e:
-            # General exception for unexpected errors
             print(f"An error occurred for {symbol} at {t_minus_1_timestamp}: {e}")
+            pass
 
         results.append({
             'asset': symbol,
@@ -121,7 +95,7 @@ def determine_fill_status_and_calculate_y(labels_df, data_60m):
         })
 
     final_labels = pd.DataFrame(results).set_index(['asset', 'T-1_timestamp'])
-    print("Fill status and Y labels calculated.")
+    print("Fill status and Y labels calculated (Market Order simulation).")
     return final_labels
 
 def build_labels():
