@@ -330,6 +330,17 @@ def build_features():
     # Shift G features to align with T-1 timestamp
     features_g_shifted = features_g.groupby(level='symbol').shift(1)
 
+    # --- 新增 G 組索引標準化 ---
+    if not features_g_shifted.empty:
+        asset_level_g = features_g_shifted.index.get_level_values('symbol')
+        timestamp_level_g = features_g_shifted.index.get_level_values('timestamp')
+        normalized_timestamp_g = pd.to_datetime(timestamp_level_g).date
+        features_g_shifted.index = pd.MultiIndex.from_arrays(
+            [asset_level_g, normalized_timestamp_g],
+            names=['asset', 'T-1_timestamp'] # 確保索引名稱與 abc 一致
+        )
+    # --- 標準化結束 ---
+
     # Now, join with G-group features
     final_features = features_abc.join(features_g_shifted, how='left')
 
