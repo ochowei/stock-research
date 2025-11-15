@@ -5,3 +5,6 @@ fastparquet
 pandas-ta==0.4.71b0
 numpy==2.2.6
 lightgbm
+matplotlib
+scipy
+scikit-learn
