@@ -8,6 +8,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 features_path = os.path.join(script_dir, 'features_X_T-1.parquet')
 labels_path = os.path.join(script_dir, 'labels_Y.parquet')
 output_path = os.path.join(script_dir, 'model_ready_dataset.parquet')
+uncleaned_output_path = os.path.join(script_dir, 'model_merged_uncleaned.parquet')
 
 # --- Logika ---
 
@@ -55,6 +56,11 @@ print("合併特徵與標籤數據...")
 # The execution plan specifies that both files are indexed by ('asset', 'T-1_timestamp')
 merged_df = pd.merge(features_df, labels_df, left_index=True, right_index=True, how='inner')
 print(f"數據合併完畢，共 {len(merged_df)} 筆。")
+
+# 儲存未清理的合併數據
+print(f"儲存未清理的合併數據至 {uncleaned_output_path}...")
+merged_df.to_parquet(uncleaned_output_path)
+print("數據儲存完畢。")
 
 # --- 合併後 (Merged) NaN 診斷報告 ---
 print("\n--- 合併後 (Merged) NaN 診斷報告 ---")

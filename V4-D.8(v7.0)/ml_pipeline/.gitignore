@@ -7,6 +7,7 @@ predictions_oos_merged.csv
 features_X_T-1.parquet
 labels_Y.parquet
 model_ready_dataset.parquet
+model_merged_uncleaned.parquet
 
 # Ignore generated analysis files
 backtest_report.txt
