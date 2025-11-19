@@ -103,8 +103,18 @@ def calculate_base_metrics(data_60m):
 
         try:
             bbands = ta.bbands(group['Close'], length=20)
-            if isinstance(bbands, pd.DataFrame) and all(c in bbands.columns for c in ['BBU_20_2.0_2.0', 'BBL_20_2.0_2.0', 'BBM_20_2.0_2.0']):
-                group['BBWidth_20_60m'] = (bbands['BBU_20_2.0_2.0'] - bbands['BBL_20_2.0_2.0']) / bbands['BBM_20_2.0_2.0']
+            if isinstance(bbands, pd.DataFrame):
+                # Rename columns for clarity
+                bbands.rename(columns={
+                    'BBU_20_2.0_2.0': 'BBU',
+                    'BBL_20_2.0_2.0': 'BBL',
+                    'BBM_20_2.0_2.0': 'BBM'
+                }, inplace=True)
+
+                if all(c in bbands.columns for c in ['BBU', 'BBL', 'BBM']):
+                    group['BBWidth_20_60m'] = (bbands['BBU'] - bbands['BBL']) / bbands['BBM']
+                else:
+                    group['BBWidth_20_60m'] = np.nan
             else:
                 group['BBWidth_20_60m'] = np.nan
         except Exception as e:
