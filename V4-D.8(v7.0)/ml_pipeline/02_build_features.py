@@ -98,7 +98,7 @@ def calculate_base_metrics(data_60m):
         try:
             rolling_mean_20 = group['Close'].rolling(window=20).mean()
             rolling_std_20 = group['Close'].rolling(window=20).std()
-            group['Z_Score_20_60m'] = (group['Close'] - rolling_mean_20) / rolling_std_20
+            group['Z_Score_20_60m'] = (group['Close'] - rolling_mean_20) / (rolling_std_20 + 1e-8)
         except Exception as e:
             print(f"Could not calculate Z_Score_20_60m for {symbol}: {e}")
             group['Z_Score_20_60m'] = np.nan
