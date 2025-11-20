@@ -54,8 +54,12 @@ def merge_predictions():
 
     # --- Merge DataFrames ---
 
-    # Join the predictions and the Z-Score feature
-    df_merged = df_a.join([df_b, df_c, df_z_score], how='inner')
+    # First, join the prediction DataFrames using an inner join to ensure consistency
+    df_predictions = df_a.join([df_b, df_c], how='inner')
+
+    # Then, left join the Z-Score feature. This keeps all predictions and adds
+    # the Z-Score where available, leaving NaN otherwise.
+    df_merged = df_predictions.join(df_z_score, how='left')
 
     # --- Verification ---
     expected_columns = [
