@@ -96,59 +96,95 @@ def main():
         plt.close()
 
         # d. Trading Simulation
-
-        # --- Strategy Parameters ---
-        # 選擇要回測的模型 ('A', 'B', 'C')
-        STRATEGY_MODEL = 'B'
-        # 預測值門檻 (Y_pred > ?)
-        PRED_THRESHOLD = 0.2
-        # 不確定性門檻 (Uncertainty < ?) - 注意 Model B 的不確定性範圍不同
-        UNCERT_THRESHOLD = 1.0
-        # --- End Parameters ---
-
-        f.write(f"3. Trading Simulation (Model {STRATEGY_MODEL})\n")
+        f.write("3. Trading Simulation Comparison\n")
         f.write("---------------------------------\n")
 
-        if STRATEGY_MODEL == 'B':
-            pred_col = 'Y_pred_B_Median'
-            uncert_col = 'Uncertainty_B' # 來自 Y_pred_B_Upper - Y_pred_B_Lower
-        elif STRATEGY_MODEL == 'A':
-            pred_col = 'Y_pred_A'
-            uncert_col = 'Uncertainty_A'
-        else: # 預設為 C
-            pred_col = 'Y_pred_C'
-            uncert_col = 'Uncertainty_C'
+        # --- Strategy Parameters ---
+        PRED_THRESHOLD = 0.2   # For ML models
+        UNCERT_THRESHOLD = 1.0 # For ML models
+        BB_LONG_THRESHOLD = -2.0 # For Bollinger Band Strategy
+        BB_SHORT_THRESHOLD = 2.0 # For Bollinger Band Strategy
+        # --- End Parameters ---
 
-        long_signals = (df[pred_col] > PRED_THRESHOLD) & (df[uncert_col] < UNCERT_THRESHOLD)
+        # Dictionary to hold performance results for each strategy
+        performance_results = {}
 
-        f.write(f"Strategy: Model {STRATEGY_MODEL}, PRED_THRESHOLD > {PRED_THRESHOLD}, UNCERT_THRESHOLD < {UNCERT_THRESHOLD}\n")
-        f.write(f"Total Signals Generated: {long_signals.sum()}\n")
+        # --- Strategy Definitions ---
+        strategies = {
+            "Model_A": {
+                "type": "ml", "pred": "Y_pred_A", "uncert": "Uncertainty_A"
+            },
+            "Model_B": {
+                "type": "ml", "pred": "Y_pred_B_Median", "uncert": "Uncertainty_B"
+            },
+            "Model_C": {
+                "type": "ml", "pred": "Y_pred_C", "uncert": "Uncertainty_C"
+            },
+            "Bollinger_Band": {
+                "type": "bb"
+            }
+        }
 
-        # Assuming Y_true represents the return for the period if we enter a trade
-        returns = pd.Series(np.where(long_signals, df['Y_true'], 0), index=df.index)
+        # --- Run Simulations ---
+        for name, params in strategies.items():
+            f.write(f"\n--- Strategy: {name} ---\n")
 
-        total_return, sharpe_ratio, max_drawdown, cumulative_return, drawdown = calculate_performance_metrics(returns)
+            if params["type"] == "ml":
+                long_signals = (df[params["pred"]] > PRED_THRESHOLD) & (df[params["uncert"]] < UNCERT_THRESHOLD)
+                short_signals = pd.Series(False, index=df.index) # ML models are long-only for now
+                f.write(f"Parameters: PRED_THRESHOLD > {PRED_THRESHOLD}, UNCERT_THRESHOLD < {UNCERT_THRESHOLD}\n")
 
-        f.write(f"Sharpe Ratio: {sharpe_ratio:.4f}\n")
-        f.write(f"Cumulative Return: {total_return:.4f}\n")
-        f.write(f"Max Drawdown: {max_drawdown:.4f}\n")
+            elif params["type"] == "bb":
+                if 'Z_Score_20' not in df.columns:
+                    f.write("Z_Score_20 column not found, skipping Bollinger Band strategy.\n")
+                    continue
+                long_signals = df['Z_Score_20'] < BB_LONG_THRESHOLD
+                short_signals = df['Z_Score_20'] > BB_SHORT_THRESHOLD
+                f.write(f"Parameters: LONG_THRESHOLD < {BB_LONG_THRESHOLD}, SHORT_THRESHOLD > {BB_SHORT_THRESHOLD}\n")
 
-        # Plot Cumulative Return
+            total_signals = long_signals.sum() + short_signals.sum()
+            f.write(f"Total Signals Generated: {total_signals} (Long: {long_signals.sum()}, Short: {short_signals.sum()})\n")
+
+            # Calculate returns based on signals
+            # Long signal: profit = Y_true
+            # Short signal: profit = -Y_true
+            returns = np.select(
+                [long_signals, short_signals],
+                [df['Y_true'], -df['Y_true']],
+                default=0
+            )
+            returns = pd.Series(returns, index=df.index)
+
+            # Calculate and store metrics
+            total_return, sharpe, max_dd, cum_ret, drawdown = calculate_performance_metrics(returns)
+            performance_results[name] = {'cum_ret': cum_ret, 'drawdown': drawdown}
+
+            f.write(f"Sharpe Ratio: {sharpe:.4f}\n")
+            f.write(f"Cumulative Return: {total_return:.4f}\n")
+            f.write(f"Max Drawdown: {max_dd:.4f}\n")
+
+        # --- Plotting ---
+
+        # Plot Cumulative Returns for all strategies
         plt.figure(figsize=(12, 6))
-        cumulative_return.plot()
-        plt.title('Cumulative Return')
+        for name, results in performance_results.items():
+            results['cum_ret'].plot(label=name)
+        plt.title('Strategy Cumulative Returns Comparison')
         plt.xlabel('Time')
         plt.ylabel('Cumulative Return')
+        plt.legend()
         plt.grid(True)
         plt.savefig(cumulative_return_plot)
         plt.close()
 
-        # Plot Drawdown
+        # Plot Drawdowns for all strategies
         plt.figure(figsize=(12, 6))
-        drawdown.plot(color='red')
-        plt.title('Drawdown')
+        for name, results in performance_results.items():
+            results['drawdown'].plot(label=name, alpha=0.7)
+        plt.title('Strategy Drawdown Comparison')
         plt.xlabel('Time')
         plt.ylabel('Drawdown')
+        plt.legend()
         plt.grid(True)
         plt.savefig(drawdown_plot)
         plt.close()
