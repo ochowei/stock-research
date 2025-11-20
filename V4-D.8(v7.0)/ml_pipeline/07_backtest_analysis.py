@@ -100,9 +100,11 @@ def main():
         # --- Strategy Parameters ---
         # 選擇要回測的模型 ('A', 'B', 'C')
         STRATEGY_MODEL = 'B'
-        # 預測值門檻 (Y_pred > ?)
+        # Long Threshold (Y_pred > ?)
         PRED_THRESHOLD = 0.2
-        # 不確定性門檻 (Uncertainty < ?) - 注意 Model B 的不確定性範圍不同
+        # Short Threshold (Y_pred < ?)
+        SHORT_PRED_THRESHOLD = -0.2
+        # Uncertainty Threshold (Uncertainty < ?) - Note: Model B's uncertainty scale is different
         UNCERT_THRESHOLD = 1.0
         # --- End Parameters ---
 
@@ -120,12 +122,18 @@ def main():
             uncert_col = 'Uncertainty_C'
 
         long_signals = (df[pred_col] > PRED_THRESHOLD) & (df[uncert_col] < UNCERT_THRESHOLD)
+        short_signals = (df[pred_col] < SHORT_PRED_THRESHOLD) & (df[uncert_col] < UNCERT_THRESHOLD)
 
-        f.write(f"Strategy: Model {STRATEGY_MODEL}, PRED_THRESHOLD > {PRED_THRESHOLD}, UNCERT_THRESHOLD < {UNCERT_THRESHOLD}\n")
-        f.write(f"Total Signals Generated: {long_signals.sum()}\n")
+        f.write(f"Strategy: Model {STRATEGY_MODEL}, PRED_THRESHOLD > {PRED_THRESHOLD}, SHORT_PRED_THRESHOLD < {SHORT_PRED_THRESHOLD}, UNCERT_THRESHOLD < {UNCERT_THRESHOLD}\n")
+        f.write(f"Total Long Signals Generated: {long_signals.sum()}\n")
+        f.write(f"Total Short Signals Generated: {short_signals.sum()}\n")
 
-        # Assuming Y_true represents the return for the period if we enter a trade
-        returns = pd.Series(np.where(long_signals, df['Y_true'], 0), index=df.index)
+        # Calculate returns based on signals
+        # Long position: return is Y_true
+        # Short position: return is -Y_true (profit from price drop)
+        conditions = [long_signals, short_signals]
+        choices = [df['Y_true'], -df['Y_true']]
+        returns = pd.Series(np.select(conditions, choices, default=0), index=df.index)
 
         total_return, sharpe_ratio, max_drawdown, cumulative_return, drawdown = calculate_performance_metrics(returns)
 
