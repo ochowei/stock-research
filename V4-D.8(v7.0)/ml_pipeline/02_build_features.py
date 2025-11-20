@@ -46,6 +46,11 @@ def calculate_base_metrics(data_60m):
         for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
             group[col] = pd.to_numeric(group[col], errors='coerce')
 
+        # --- Data Imputation: Forward fill to handle minor gaps ---
+        price_cols = ['Open', 'High', 'Low', 'Close']
+        group[price_cols] = group[price_cols].ffill(limit=2)
+        # ---
+
         # Skip calculation if the group is too small for the largest window (20)
         if len(group) < 20:
             for metric in ['RSI', 'ATR', 'MFI', 'Vol_Ratio', 'Body_Pct_ATR', 'Upper_Wick_Pct_ATR', 'Lower_Wick_Pct_ATR', 'Z_Score_20_60m', 'BBWidth_20_60m']:
@@ -105,13 +110,14 @@ def calculate_base_metrics(data_60m):
             rolling_std_20 = group['Close'].rolling(window=20).std()
             group['Z_Score_20_60m'] = (group['Close'] - rolling_mean_20) / (rolling_std_20 + 1e-8)
         except Exception as e:
-            print(f"Could not calculate Z_Score_20_60m for {symbol}: {e}")
+            print(f"--- Z-SCORE CALCULATION FAILED for symbol: {symbol} ---")
+            print(f"--- Exception: {e} ---")
             group['Z_Score_20_60m'] = np.nan
 
         try:
             bbands = ta.bbands(group['Close'], length=20)
             if isinstance(bbands, pd.DataFrame):
-                # Rename columns for clarity
+                # Corrected column names based on pandas_ta standard output
                 bbands.rename(columns={
                     'BBU_20_2.0_2.0': 'BBU',
                     'BBL_20_2.0_2.0': 'BBL',
@@ -119,7 +125,8 @@ def calculate_base_metrics(data_60m):
                 }, inplace=True)
 
                 if all(c in bbands.columns for c in ['BBU', 'BBL', 'BBM']):
-                    group['BBWidth_20_60m'] = (bbands['BBU'] - bbands['BBL']) / bbands['BBM']
+                    # Add epsilon to prevent division by zero if BBM is 0
+                    group['BBWidth_20_60m'] = (bbands['BBU'] - bbands['BBL']) / (bbands['BBM'] + 1e-8)
                 else:
                     group['BBWidth_20_60m'] = np.nan
             else:
