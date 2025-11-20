@@ -79,21 +79,26 @@
 
 #### **步驟 3：標籤工程 (Label Engineering \- Y)**
 
-此步驟建立 v7.0 的「動態風險標準化回報」回歸標籤，並模擬「市價單」進場以確保 100% 成交。
+此步驟建立 v7.0 的「動態風險標準化回報」回歸標籤，並模擬「限價單」進場，這可能導致成交失敗 (NO\_FILL)。
 
-* **目標：** 計算 Y 標籤（回歸值）。
+* **目標：** 計算 Y 標籤（回歸值）及成交狀態。
 * **執行：**
   1. 載入 `raw_daily.parquet`。
   2. **計算輸入參數：**
-     * `p` (進場價格) = **T Open** (使用 `.shift(-1)`)。
+     * `p` (進場價格) = **T-1 Close**。
      * `vol` (波動率單位) = T-1 日的 14 天 ATR。
+     * `T_Low` (T 日最低價) = **T-day Low** (使用 `.shift(-1)`)。
   3. **計算出場價格：**
      * `p_exit` (出場價格) = **T+1 Open** (使用 `.shift(-2)`)。
-  4. **Y 標籤計算：**
-     * 由於模擬市價單，`Fill_Status` 將永遠為 `'FILLED'`。
-     * 只要 `p`, `p_exit`, `vol` 皆有效，則 `Y = (p_exit - p) / vol`。
+  4. **Y 標籤與成交狀態計算：**
+     * **成交條件判斷：** `if T_Low <= p:`
+       * `Fill_Status = 'FILLED'`
+       * `Y = (p_exit - p) / vol`
+     * **失敗條件：** `else:`
+       * `Fill_Status = 'NO_FILL'`
+       * `Y = NaN`
 * **產出檔案：**
-  * `labels_Y.parquet`: 包含 (asset, T-1 timestamp) 索引及對應的 `Y` 值和 `Fill_Status` (此欄位值恆為 'FILLED')。
+  * `labels_Y.parquet`: 包含 (asset, T-1 timestamp) 索引及對應的 `Y` 值和 `Fill_Status`。
 
 ---
 

@@ -21,7 +21,7 @@ def load_data():
 
 def calculate_label_inputs(data_daily):
     """
-    Calculates T-1 inputs (p, vol) and T+1 exit price (p_exit) by iterating through each symbol.
+    Calculates T-1 inputs (p, vol), T-day low (T_Low), and T+1 exit price (p_exit).
     """
     if data_daily is None:
         return None
@@ -51,20 +51,21 @@ def calculate_label_inputs(data_daily):
             length=14
         )
 
-        # --- New logic (T Open entry, T+1 Open exit) ---
-        symbol_data['p'] = symbol_data['Open'].shift(-1)      # p = T Open
-        symbol_data['p_exit'] = symbol_data['Open'].shift(-2)  # p_exit = T+1 Open
+        # --- New logic (T-1 Close limit order entry) ---
+        symbol_data['p'] = symbol_data['Close']                # p = T-1 Close
+        symbol_data['T_Low'] = symbol_data['Low'].shift(-1)      # T-day Low
+        symbol_data['p_exit'] = symbol_data['Open'].shift(-2)    # p_exit = T+1 Open
 
         # Add symbol back for MultiIndex
         symbol_data['symbol'] = symbol
 
-        all_labels.append(symbol_data[['symbol', 'p', 'vol', 'p_exit']])
+        all_labels.append(symbol_data[['symbol', 'p', 'vol', 'p_exit', 'T_Low']])
 
     # Concatenate all results and set the correct index
     labels_df = pd.concat(all_labels)
     labels_df = labels_df.set_index(['symbol', labels_df.index])
 
-    print("Calculated T-1 inputs (p, vol) and T+1 exit price (p_exit).")
+    print("Calculated T-1 inputs (p, vol), T-day Low, and T+1 exit price (p_exit).")
     return labels_df
 
 def determine_fill_status_and_calculate_y(labels_df, data_60m):
@@ -75,14 +76,23 @@ def determine_fill_status_and_calculate_y(labels_df, data_60m):
         p = row['p']
         p_exit = row['p_exit']
         vol = row['vol']
+        t_low = row['T_Low']
 
-        fill_status = 'FILLED' # Always filled for market order
-        y = np.nan             # Default to NaN
+        fill_status = 'NO_FILL' # Default to NO_FILL
+        y = np.nan              # Default to NaN
 
         try:
-            # Calculate Y only if all necessary data is valid and vol > 0
-            if pd.notna(p) and pd.notna(p_exit) and pd.notna(vol) and vol > 0:
-                y = (p_exit - p) / vol
+            # Check for NaN in T_Low, which happens at the end of the series
+            if pd.isna(t_low):
+                fill_status = 'DATA_ISSUE' # Mark as data issue to be filtered out
+            # Fill condition: T-Day Low must be less than or equal to the T-1 Close price
+            elif t_low <= p:
+                fill_status = 'FILLED'
+                # Calculate Y only if all necessary data is valid and vol > 0
+                if pd.notna(p) and pd.notna(p_exit) and pd.notna(vol) and vol > 0:
+                    y = (p_exit - p) / vol
+            # else, it remains NO_FILL with y = NaN
+
         except Exception as e:
             print(f"An error occurred for {symbol} at {t_minus_1_timestamp}: {e}")
             pass
@@ -95,7 +105,7 @@ def determine_fill_status_and_calculate_y(labels_df, data_60m):
         })
 
     final_labels = pd.DataFrame(results).set_index(['asset', 'T-1_timestamp'])
-    print("Fill status and Y labels calculated (Market Order simulation).")
+    print("Fill status and Y labels calculated (Limit Order simulation).")
     return final_labels
 
 def build_labels():
