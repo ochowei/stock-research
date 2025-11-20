@@ -45,7 +45,7 @@ def merge_predictions():
         df_features = df_features.set_index(['asset', 'T-1_timestamp'])
 
     # Select and rename the Z-Score column
-    z_score_col = 'X_T1_Z_Score_20_60m_ETH_Last_Partial'
+    z_score_col = 'X_T1_Z_Score_20_60m_60m_ETH_Last_Partial'
     if z_score_col in df_features.columns:
         df_z_score = df_features[[z_score_col]].rename(columns={z_score_col: 'Z_Score_20'})
     else:
