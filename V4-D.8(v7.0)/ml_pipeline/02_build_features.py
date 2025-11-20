@@ -46,6 +46,11 @@ def calculate_base_metrics(data_60m):
         for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
             group[col] = pd.to_numeric(group[col], errors='coerce')
 
+        # --- FIX: Add forward fill for price data to handle small gaps ---
+        price_cols = ['Open', 'High', 'Low', 'Close']
+        group[price_cols] = group[price_cols].ffill(limit=2) # Limit to 2 periods to avoid excessive propagation
+        # --- END FIX ---
+
         # Skip calculation if the group is too small for the largest window (20)
         if len(group) < 20:
             for metric in ['RSI', 'ATR', 'MFI', 'Vol_Ratio', 'Body_Pct_ATR', 'Upper_Wick_Pct_ATR', 'Lower_Wick_Pct_ATR', 'Z_Score_20_60m', 'BBWidth_20_60m']:
@@ -105,23 +110,24 @@ def calculate_base_metrics(data_60m):
             rolling_std_20 = group['Close'].rolling(window=20).std()
             group['Z_Score_20_60m'] = (group['Close'] - rolling_mean_20) / (rolling_std_20 + 1e-8)
         except Exception as e:
-            print(f"Could not calculate Z_Score_20_60m for {symbol}: {e}")
+            # More specific error logging
+            print(f"Could not calculate Z_Score_20_60m for {symbol}. Error: {e}. Group head:\n{group.head()}")
             group['Z_Score_20_60m'] = np.nan
 
         try:
             bbands = ta.bbands(group['Close'], length=20)
-            if isinstance(bbands, pd.DataFrame):
-                # Rename columns for clarity
-                bbands.rename(columns={
-                    'BBU_20_2.0_2.0': 'BBU',
-                    'BBL_20_2.0_2.0': 'BBL',
-                    'BBM_20_2.0_2.0': 'BBM'
-                }, inplace=True)
+            if isinstance(bbands, pd.DataFrame) and bbands.shape[1] >= 3:
+                # --- FIX: Use positional indexing to avoid column name issues ---
+                bbl = bbands.iloc[:, 0]  # Lower band
+                bbm = bbands.iloc[:, 1]  # Middle band
+                bbu = bbands.iloc[:, 2]  # Upper band
 
-                if all(c in bbands.columns for c in ['BBU', 'BBL', 'BBM']):
-                    group['BBWidth_20_60m'] = (bbands['BBU'] - bbands['BBL']) / bbands['BBM']
-                else:
-                    group['BBWidth_20_60m'] = np.nan
+                # Avoid division by zero
+                group['BBWidth_20_60m'] = np.where(
+                    bbm != 0,
+                    (bbu - bbl) / (bbm + 1e-8),
+                    0
+                )
             else:
                 group['BBWidth_20_60m'] = np.nan
         except Exception as e:
