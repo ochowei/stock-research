@@ -39,6 +39,8 @@ def calculate_base_metrics(data_60m):
     # Define a function to apply to each group
     def calculate_metrics_for_group(group):
         group = group.copy()
+        # Sort by timestamp to ensure correct rolling calculations
+        group.sort_values('timestamp', inplace=True)
         symbol = group['symbol'].iloc[0] if 'symbol' in group.columns and not group.empty else 'Unknown'
 
         for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
