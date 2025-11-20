@@ -66,13 +66,18 @@ def calculate_base_metrics(data_60m):
             group['ATR'] = np.nan
 
         try:
-            group['MFI'] = ta.mfi(group['High'], group['Low'], group['Close'], group['Volume'], length=14)
+            # Strategy B: MFI/Indicators - Use a "safe" volume to avoid NaN from pandas_ta
+            group['Volume'] = group['Volume'].fillna(0)
+            safe_volume = group['Volume'].replace(0, 1) # Replace 0 with 1 to avoid division by zero
+            group['MFI'] = ta.mfi(group['High'], group['Low'], group['Close'], safe_volume, length=14)
         except Exception as e:
             print(f"Could not calculate MFI for {symbol}: {e}")
             group['MFI'] = np.nan
 
         try:
-            group['Vol_Ratio'] = group['Volume'] / group['Volume'].rolling(window=20).mean()
+            # Strategy A: Vol_Ratio - Use conditional logic for division by zero
+            vol_ma = group['Volume'].rolling(window=20).mean()
+            group['Vol_Ratio'] = np.where(vol_ma > 0, group['Volume'] / vol_ma, 0)
         except Exception as e:
             print(f"Could not calculate Vol_Ratio for {symbol}: {e}")
             group['Vol_Ratio'] = np.nan
