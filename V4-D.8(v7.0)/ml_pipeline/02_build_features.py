@@ -352,8 +352,8 @@ def build_features():
     # Merge A, B, and C which are already daily
     features_abc = features_a.join(features_b, how='outer').join(features_c, how='outer')
 
-    # Shift G features to align with T-1 timestamp
-    features_g_shifted = features_g.groupby(level='symbol').shift(1)
+    # Do not shift G features. Daily data for T-1 is available at the end of day T-1.
+    # features_g_shifted = features_g.groupby(level='symbol').shift(1) # This is the bug
 
     # --- Bug 修復：在 Join 之前標準化所有索引 ---
 
@@ -367,25 +367,25 @@ def build_features():
             names=['asset', 'T-1_timestamp']
         )
 
-    # 2. 標準化 G
-    if not features_g_shifted.empty:
-        asset_g = features_g_shifted.index.get_level_values('symbol')
-        ts_g = pd.to_datetime(features_g_shifted.index.get_level_values('timestamp')).date
-        features_g_shifted.index = pd.MultiIndex.from_arrays(
+    # 2. 標準化 G (No longer shifting)
+    if not features_g.empty:
+        asset_g = features_g.index.get_level_values('symbol')
+        ts_g = pd.to_datetime(features_g.index.get_level_values('timestamp')).date
+        features_g.index = pd.MultiIndex.from_arrays(
             [asset_g, ts_g],
             names=['asset', 'T-1_timestamp'] # 確保索引名稱一致
         )
     # --- 修復結束 ---
 
     # Now, join with G-group features
-    final_features = features_abc.join(features_g_shifted, how='left')
+    final_features = features_abc.join(features_g, how='left')
 
     # --- Feature Merge Diagnostics ---
     g_cols = ['X_34_Beta_6M', 'X_35_Momentum_6_1M', 'X_36_Z_Score_126_Daily', 'X_37_Liquidity_Amihud']
     abc_cols = [col for col in final_features.columns if col not in g_cols]
 
     shape_abc = features_abc.shape
-    shape_g = features_g_shifted.shape
+    shape_g = features_g.shape # Use the un-shifted shape
     shape_final = final_features.shape
 
     # Identify rows with any NaNs in each feature group
@@ -435,6 +435,7 @@ def build_features():
     final_features.to_parquet(output_path)
     print(f"Successfully saved final features to {output_path}")
     print(f"Final features shape: {final_features.shape}")
+    return final_features
 
 if __name__ == "__main__":
     build_features()
