@@ -55,15 +55,19 @@ V5 被定義為 **「帶有長線趨勢過濾的短週期輪動均值回歸策�
 
 * **目標：** 將原始價格轉換為描述市場狀態的向量。  
 * **關鍵特徵：**  
-  * 微觀結構：波動率曲面（Volatility Surface）、相關性矩陣（Correlation Matrix）。  
+  * **Systematic Proxy ETFs:**
+      * **IWO (Russell 2000 Growth):** 作為高 beta/風險情緒的代理。
+      * **IWO_Volatility:** IWO 的滾動已實現波動率。
+      * **SPY_IWO_Divergence:** SPY 與 IWO 之間的滾動回報差異。
   * 情緒面：新聞情緒分數（Sentiment Score）。  
-  * *方法論重點：* 捕捉市場的「脆弱性（Fragility）」，而非僅僅是價格走勢。
+  * *方法論重點：* 使用外部、系統化構建的指數 (Systematic Proxies) 來避免數據洩漏 (Data Leakage) 與選擇性偏差 (Selection Bias)。
 
 ### **L1: 體制識別層 (Regime Identification Layer) \- 防禦**
 
 * **目標：** **強化並動態調整 V5 基礎模型中的靜態「市場狀態濾網」。** 識別當前市場是否處於不適合均值回歸的「崩盤」或「極端異常」狀態，彌補 SMA200 的滯後性。  
 * **模型方法：**  
   1. **隱馬可夫模型 (HMM)：** 將市場劃分為潛在狀態（牛市、震盪、崩盤）。  
+     * **輸入：** 使用上述 Proxy ETF 特徵 (如 `IWO_Volatility`, `SPY_IWO_Divergence`) 作為觀測變量。
      * 決策：若 $P(State=Crash) \> Threshold$，觸發熔斷。  
   2. **隔離森林 (Isolation Forest)：** 非監督式異常檢測。  
      * 決策：若特徵向量的「異常分數」過高，視為未知的黑天鵝事件，停止開倉。
@@ -97,7 +101,7 @@ V5 被定義為 **「帶有長線趨勢過濾的短週期輪動均值回歸策�
 **目標：** 尋找能夠領先於崩盤發生的市場特徵（Precursors to Crash）。
 
 * **研究重點：**  
-  * **相關性崩潰測試：** 驗證在崩盤前夕，標的池內的平均相關係數是否顯著上升。  
+  * **Proxy ETF 有效性測試：** 驗證 IWO Volatility 與 SPY-IWO Divergence 是否能有效捕捉市場脆弱性。
   * **HMM 狀態校準：** 訓練 Gaussian HMM，確認其能否正確區分 2020 年與 2022 年的市場體制。  
   * **異常檢測閾值設定：** 利用 Isolation Forest 針對歷史極端事件進行校準。
 
