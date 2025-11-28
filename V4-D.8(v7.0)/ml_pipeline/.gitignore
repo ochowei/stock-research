@@ -14,3 +14,6 @@ backtest_report.txt
 cumulative_return.png
 drawdown.png
 uncertainty_calibration.png
+
+# Ignore all downloaded and processed data
+data/
