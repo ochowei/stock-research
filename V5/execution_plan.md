@@ -20,6 +20,8 @@
 * **產出檔案：**
   * `data/temp_raw/raw_tickers_data.pkl` (或類似格式)
   * `data/temp_raw/raw_macro_data.pkl`
+  * `ml_pipeline/data/temp_raw/raw_tickers_data.pkl` (或類似格式)
+  * `ml_pipeline/data/temp_raw/raw_macro_data.pkl`
 
 #### **步驟 0-2：數據格式化與儲存 (Data Formatting to Parquet)**
 
@@ -35,6 +37,8 @@
 * **產出檔案：**
   * `data/universe_daily.parquet`: 成分股面板數據。
   * `data/market_indicators.parquet`: VIX, SPY, 債券收益率等宏觀數據。
+  * `ml_pipeline/data/universe_daily.parquet`: 成分股面板數據。
+  * `ml_pipeline/data/market_indicators.parquet`: VIX, SPY, 債券收益率等宏觀數據。
 
 #### **步驟 1：特徵工程 - L0 數據層 (L0 Feature Engineering)**
 
@@ -52,6 +56,8 @@
 * **產出檔案：**
   * `features/market_features_L0.parquet`: 用於體制識別的時間序列數據。
   * `features/stock_features_L0.parquet`: 用於個股選擇的面板數據。
+  * `ml_pipeline/features/market_features_L0.parquet`: 用於體制識別的時間序列數據。
+  * `ml_pipeline/features/stock_features_L0.parquet`: 用於個股選擇的面板數據。
 
 #### **步驟 2：L1 體制識別模型訓練 (Regime Identification Layer)**
 
@@ -70,6 +76,9 @@
   * `models/hmm_model.joblib`: 訓練好的 HMM 模型。
   * `models/iso_forest.joblib`: 訓練好的 Isolation Forest 模型。
   * `signals/regime_signals.parquet`: 每日市場狀態與異常分數的時間序列。
+  * `ml_pipeline/models/hmm_model.joblib`: 訓練好的 HMM 模型。
+  * `ml_pipeline/models/iso_forest.joblib`: 訓練好的 Isolation Forest 模型。
+  * `ml_pipeline/signals/regime_signals.parquet`: 每日市場狀態與異常分數的時間序列。
 
 #### **步驟 3：L2 策略生成與 L3 元標籤構建 (Strategy & Meta-Labeling)**
 
@@ -93,6 +102,9 @@
   * `signals/base_strategy_trades.parquet`: 未經過濾的原始交易紀錄。
   * `models/l3_meta_filter.joblib`: L3 過濾模型。
   * `signals/l3_probabilities.csv`: 每個原始訊號的獲利機率預測。
+  * `ml_pipeline/signals/base_strategy_trades.parquet`: 未經過濾的原始交易紀錄。
+  * `ml_pipeline/models/l3_meta_filter.joblib`: L3 過濾模型。
+  * `ml_pipeline/signals/l3_probabilities.csv`: 每個原始訊號的獲利機率預測。
 
 #### **步驟 4：回測與驗證協議 (Backtest & Verification)**
 
@@ -109,6 +121,9 @@
   * `analysis/backtest_report.txt`: 包含 Sharpe, DD, Win Rate 的詳細報告。
   * `analysis/equity_curves_comparison.png`: 策略績效比較圖。
   * `analysis/regime_overlay.png`: 市場走勢疊加 HMM 狀態圖。
+  * `ml_pipeline/analysis/backtest_report.txt`: 包含 Sharpe, DD, Win Rate 的詳細報告。
+  * `ml_pipeline/analysis/equity_curves_comparison.png`: 策略績效比較圖。
+  * `ml_pipeline/analysis/regime_overlay.png`: 市場走勢疊加 HMM 狀態圖。
 
 #### **步驟 5：合成壓力測試 (Optional/Advanced)**
 
@@ -126,3 +141,9 @@
 4. `03_train_regime_model_l1.py`: 涵蓋步驟 2，訓練 HMM 與 Isolation Forest。
 5. `04_train_meta_labeling_l3.py`: 涵蓋步驟 3，生成基礎訊號並訓練元標籤模型。
 6. `05_backtest_and_verify.py`: 涵蓋步驟 4，執行驗證協議與產出報告。
+1. `ml_pipeline/00_download_data_v5.py`: 涵蓋步驟 0-1，負責從 yfinance 下載原始數據並暫存。
+2. `ml_pipeline/01_format_data_v5.py`: 涵蓋步驟 0-2，負責將暫存數據格式化為 Parquet。
+3. `ml_pipeline/02_build_features_l0_v5.py`: 涵蓋步驟 1，負責計算 L0 特徵。
+4. `ml_pipeline/03_train_regime_model_l1.py`: 涵蓋步驟 2，訓練 HMM 與 Isolation Forest。
+5. `ml_pipeline/04_train_meta_labeling_l3.py`: 涵蓋步驟 3，生成基礎訊號並訓練元標籤模型。
+6. `ml_pipeline/05_backtest_and_verify.py`: 涵蓋步驟 4，執行驗證協議與產出報告。
