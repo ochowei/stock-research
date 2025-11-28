@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import os
 from datetime import datetime, timedelta
+import time
 
 def get_asset_tickers(file_path):
     """Reads the asset pool JSON and returns a list of yfinance-compatible tickers."""
@@ -16,17 +17,39 @@ def get_asset_tickers(file_path):
     return tickers
 
 def download_data(tickers, start_date, end_date, interval, prepost=False):
-    """Downloads historical data for a list of tickers."""
+    """Downloads historical data for a list of tickers with retry logic."""
     print(f"Downloading {interval} data for {len(tickers)} tickers from {start_date} to {end_date}...")
-    df = yf.download(
-        tickers,
-        start=start_date,
-        end=end_date,
-        interval=interval,
-        prepost=prepost,
-        threads=True
-    )
-    return df
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            df = yf.download(
+                tickers,
+                start=start_date,
+                end=end_date,
+                interval=interval,
+                auto_adjust=False,
+                prepost=prepost,
+                threads=True,
+                timeout=30
+            )
+            # Check if the dataframe is empty or contains only NaNs
+            if not df.empty and not df.isnull().all().all():
+                # On success, print a message and return the dataframe
+                print(f"Successfully downloaded data on attempt {attempt + 1}.")
+                return df
+            else:
+                print(f"Attempt {attempt + 1} of {max_retries} failed: No data returned.")
+        except Exception as e:
+            print(f"Attempt {attempt + 1} of {max_retries} failed with error: {e}")
+
+        # If not the last attempt, wait before retrying
+        if attempt < max_retries - 1:
+            print("Waiting 5 seconds before retrying...")
+            time.sleep(5)
+
+    # If all retries fail, return an empty DataFrame
+    print("All download attempts failed.")
+    return pd.DataFrame()
 
 def main():
     """Main function to download and save ticker and macro data."""
