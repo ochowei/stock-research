@@ -126,8 +126,9 @@ def run_strategy_backtest(trades, regime):
     df = trades.merge(regime, on='timestamp', how='left')
     
     # Fill NA regimes (default to safe)
-    df['HMM_State'].fillna(0, inplace=True)
-    df['Is_Anomaly'].fillna(0, inplace=True)
+    # [Fix] Assign back instead of inplace=True
+    df['HMM_State'] = df['HMM_State'].fillna(0)
+    df['Is_Anomaly'] = df['Is_Anomaly'].fillna(0)
     
     # --- Define Strategies ---
     
