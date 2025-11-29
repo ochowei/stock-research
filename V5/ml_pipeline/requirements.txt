@@ -8,3 +8,6 @@ lightgbm
 matplotlib
 scipy
 scikit-learn
+hmmlearn
+joblib
+seaborn
