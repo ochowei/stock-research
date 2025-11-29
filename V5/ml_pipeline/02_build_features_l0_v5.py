@@ -105,8 +105,11 @@ def build_stock_features(universe_df, market_features):
         # BBP is %B (Percent Bandwidth), which is what we want
         if bbands is not None:
              df = pd.concat([df, bbands], axis=1)
-             # Rename strictly needed columns for clarity
-             df.rename(columns={'BBP_20_2.0': 'BB_PctB'}, inplace=True)
+             # [Fix] 動態尋找以 'BBP_' 開頭的欄位 (Percent Bandwidth)
+             bb_p_cols = [c for c in bbands.columns if c.startswith('BBP_')]
+             if bb_p_cols:
+                 # 取第一個找到的 BBP 欄位進行更名
+                 df.rename(columns={bb_p_cols[0]: 'BB_PctB'}, inplace=True)
 
         # 4. Volatility (ATR)
         df['ATR_14'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
