@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from .risk_manager import RiskManager
+from risk_manager import RiskManager
 
 def run_backtest(
     all_data,
