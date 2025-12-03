@@ -1,6 +1,13 @@
 
 import yfinance as yf
 import pandas as pd
+import logging
+import time
+
+# Create a logger for yfinance and add a NullHandler to suppress its output
+yf_logger = logging.getLogger('yfinance')
+yf_logger.propagate = False
+yf_logger.addHandler(logging.NullHandler())
 
 def format_ticker(ticker_string):
     """Removes exchange prefix and replaces dots with dashes for yfinance."""
@@ -20,6 +27,7 @@ def download_data(tickers, start_date, end_date):
     # --- Daily Data ---
     print(f"Downloading daily data for {len(tickers)} tickers...")
     daily_df = yf.download(tickers, start=start_date, end=end_date, interval='1d', auto_adjust=True, progress=False)
+    time.sleep(1) # Add a delay to avoid rate limiting
 
     # --- Hourly Data (in chunks) ---
     print(f"Downloading hourly data for {len(tickers)} tickers...")
@@ -36,6 +44,7 @@ def download_data(tickers, start_date, end_date):
         if not hourly_chunk.empty:
             hourly_dfs.append(hourly_chunk)
         current_start = current_end + pd.DateOffset(days=1)
+        time.sleep(1) # Add a delay between chunks to avoid rate limiting
 
     if hourly_dfs:
         hourly_df = pd.concat(hourly_dfs)
@@ -45,7 +54,7 @@ def download_data(tickers, start_date, end_date):
     # --- Formatting ---
     if not daily_df.empty:
         if len(tickers) > 1:
-            daily_df = daily_df.stack(level=1).rename_axis(['Date', 'Ticker']).reorder_levels(['Ticker', 'Date'])
+            daily_df = daily_df.stack(level=1, future_stack=True).rename_axis(['Date', 'Ticker']).reorder_levels(['Ticker', 'Date'])
         else:
             daily_df['Ticker'] = tickers[0]
             daily_df = daily_df.set_index('Ticker', append=True).reorder_levels(['Ticker', 'Date'])
@@ -54,7 +63,7 @@ def download_data(tickers, start_date, end_date):
     if not hourly_df.empty:
         hourly_df = hourly_df[~hourly_df.index.duplicated(keep='first')]
         if len(tickers) > 1:
-            hourly_df = hourly_df.stack(level=1).rename_axis(['Date', 'Ticker']).reorder_levels(['Ticker', 'Date'])
+            hourly_df = hourly_df.stack(level=1, future_stack=True).rename_axis(['Date', 'Ticker']).reorder_levels(['Ticker', 'Date'])
         else:
             hourly_df['Ticker'] = tickers[0]
             hourly_df = hourly_df.set_index('Ticker', append=True).reorder_levels(['Ticker', 'Date'])
