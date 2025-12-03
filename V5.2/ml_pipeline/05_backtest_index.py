@@ -15,7 +15,6 @@ def load_data(features_path, regime_signals_path):
     features_df = features_df.reset_index()
     df = pd.merge(features_df, regime_signals_df, left_on='timestamp', right_index=True, how='left')
 
-    # Corrected column name handling
     df.rename(columns={'signal': 'regime_signal'}, inplace=True)
 
     df['regime_signal'] = df['regime_signal'].ffill()
@@ -34,13 +33,13 @@ def run_benchmark_backtest(all_data, initial_capital=100000.0):
     for symbol in all_symbols:
         symbol_data = initial_prices[initial_prices['symbol'] == symbol]
         if not symbol_data.empty:
-            open_price = symbol_data['Open'].iloc[0]
+            open_price = symbol_data['open'].iloc[0] # Corrected to lowercase
             if open_price > 0:
                 positions[symbol] = investment_per_stock / open_price
 
     equity = pd.Series(index=all_data.index.unique().sort_values())
 
-    close_prices_pivot = all_data.pivot(columns='symbol', values='Close')
+    close_prices_pivot = all_data.pivot(columns='symbol', values='close') # Corrected to lowercase
 
     for date in equity.index:
         portfolio_value = 0
@@ -56,7 +55,8 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..'))
 
-    FEATURES_PATH = os.path.join(project_root, 'features', 'stock_features_index.parquet')
+    # Both tracks use the same combined features file
+    FEATURES_PATH = os.path.join(project_root, 'features', 'stock_features.parquet')
     REGIME_SIGNALS_PATH = os.path.join(project_root, 'signals', 'regime_signals.parquet')
     OUTPUT_DIR = os.path.join(script_dir, 'analysis')
 
