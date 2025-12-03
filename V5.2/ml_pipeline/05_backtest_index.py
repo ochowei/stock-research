@@ -12,9 +12,11 @@ def load_data(features_path, regime_signals_path):
         print(f"Error loading data: {e}")
         return None
 
-    # Corrected merge logic: reset index and use merge with left_on and right_index
     features_df = features_df.reset_index()
     df = pd.merge(features_df, regime_signals_df, left_on='timestamp', right_index=True, how='left')
+
+    # Corrected column name handling
+    df.rename(columns={'signal': 'regime_signal'}, inplace=True)
 
     df['regime_signal'] = df['regime_signal'].ffill()
     df = df.set_index('timestamp')
