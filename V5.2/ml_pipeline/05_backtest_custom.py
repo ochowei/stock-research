@@ -15,9 +15,9 @@ def load_data(features_path, regime_signals_path, asset_pool):
     asset_pool_cleaned = [a.replace('.', '-') for a in asset_pool]
     features_df = features_df[features_df.index.get_level_values('symbol').isin(asset_pool_cleaned)]
 
-    # Corrected merge logic: reset index and use merge
+    # Corrected merge logic: reset index and use merge with left_on and right_index
     features_df = features_df.reset_index()
-    df = pd.merge(features_df, regime_signals_df, on='timestamp', how='left')
+    df = pd.merge(features_df, regime_signals_df, left_on='timestamp', right_index=True, how='left')
 
     df['regime_signal'] = df['regime_signal'].ffill()
     df = df.set_index('timestamp')
