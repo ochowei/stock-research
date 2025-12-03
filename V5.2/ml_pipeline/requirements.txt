@@ -11,3 +11,5 @@ scikit-learn
 hmmlearn
 joblib
 seaborn
+lxml
+requests
