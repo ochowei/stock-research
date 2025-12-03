@@ -1,0 +1,5 @@
+Strategy,Total_Return,Sharpe,Max_DD,Final_Equity
+V5_Base (Fixed),132.48%,0.50,-37.26%,"$232,484"
+V5.1_L3 (Fixed),86.72%,0.39,-42.10%,"$186,720"
+V5.1_Full (Dynamic),26.25%,0.23,-40.13%,"$126,248"
+VOO (Buy&Hold),214.30%,0.77,-34.30%,"$314,453"
