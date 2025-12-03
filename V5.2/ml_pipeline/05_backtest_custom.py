@@ -18,7 +18,6 @@ def load_data(features_path, regime_signals_path, asset_pool):
     features_df = features_df.reset_index()
     df = pd.merge(features_df, regime_signals_df, left_on='timestamp', right_index=True, how='left')
 
-    # Corrected column name handling
     df.rename(columns={'signal': 'regime_signal'}, inplace=True)
 
     df['regime_signal'] = df['regime_signal'].ffill()
@@ -27,7 +26,7 @@ def load_data(features_path, regime_signals_path, asset_pool):
 
 def load_v5_1_benchmark(benchmark_path, all_dates, initial_capital=100000.0):
     """
-    Loads V5.1 trades, calculates returns, and correctly builds a daily equity curve.
+    Loads V5.1 trades and correctly builds a daily equity curve using the pre-calculated return.
     """
     try:
         trades = pd.read_csv(benchmark_path, parse_dates=['entry_date', 'exit_date'])
@@ -35,8 +34,9 @@ def load_v5_1_benchmark(benchmark_path, all_dates, initial_capital=100000.0):
         print(f"Benchmark file not found at {benchmark_path}. Skipping comparison.")
         return None
 
-    trades['return'] = (trades['exit_price'] / trades['entry_price']) - 1
+    # Corrected logic: Use the 'return' column directly
     daily_returns = trades.groupby('exit_date')['return'].mean()
+
     daily_returns = daily_returns.reindex(all_dates, fill_value=0)
 
     equity_curve = pd.Series(index=all_dates, dtype=float)
