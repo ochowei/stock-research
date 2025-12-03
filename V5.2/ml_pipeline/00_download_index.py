@@ -14,11 +14,9 @@ def clean_ticker(ticker):
 def scrape_index_tickers(url, table_index, ticker_column):
     """Scrapes tickers from a Wikipedia page."""
     try:
-        # Use requests with a User-Agent to avoid 403 Forbidden errors
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+        headers = {'User-Agent': 'Mozilla/5.0'}
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an exception for bad status codes
-
+        response.raise_for_status()
         tables = pd.read_html(response.text)
         ticker_df = tables[table_index]
         return ticker_df[ticker_column].str.upper().tolist()
@@ -28,7 +26,6 @@ def scrape_index_tickers(url, table_index, ticker_column):
 
 def get_fallback_tickers():
     """Returns a predefined list of tickers if scraping fails."""
-    # A mix of S&P 100 and Nasdaq 100 components as of late 2024
     return [
         'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'NVDA', 'META', 'TSLA',
         'BRK-B', 'JPM', 'JNJ', 'V', 'UNH', 'HD', 'PG', 'MA', 'AVGO', 'LLY',
@@ -57,11 +54,11 @@ def main():
     START_DATE = '2015-01-01'
     END_DATE = '2025-11-30'
 
-    # Build paths relative to the script's location
+    # Build paths relative to the script's location to get to V5.2 root
     script_dir = get_script_dir()
     v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
-    # Output directories and files
+    # Output directories and files (in V5.2/data/)
     output_dir = os.path.join(v5_2_dir, 'data', 'index')
     tickers_output_path = os.path.join(output_dir, 'raw_tickers.pkl')
     macro_output_path = os.path.join(output_dir, 'raw_macro.pkl')
@@ -98,7 +95,7 @@ def main():
     print("Index ticker data saved successfully.")
 
     # --- Download Macro Data ---
-    macro_tickers = ['SPY', 'QQQ', 'IWO', 'VTI', '^VIX', '^TNX']
+    macro_tickers = ['SPY', 'QQQ', 'IWO', 'VTI', '^VIX', 'TNX']
     print(f"Downloading daily data for {len(macro_tickers)} macro indicators...")
     macro_df = download_data(macro_tickers, START_DATE, END_DATE)
 

@@ -33,14 +33,14 @@ def main():
     START_DATE = '2015-01-01'
     END_DATE = '2025-11-30'
 
-    # Build paths relative to the script's location
+    # Build paths relative to the script's location to get to V5.2 root
     script_dir = get_script_dir()
     v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
-    # Input file
-    asset_pool_path = os.path.join(v5_2_dir, 'ml_pipeline', 'asset_pool.json')
+    # Input file (within ml_pipeline)
+    asset_pool_path = os.path.join(script_dir, 'asset_pool.json')
 
-    # Output directories and files
+    # Output directories and files (in V5.2/data/)
     output_dir = os.path.join(v5_2_dir, 'data', 'custom')
     tickers_output_path = os.path.join(output_dir, 'raw_tickers.pkl')
     macro_output_path = os.path.join(output_dir, 'raw_macro.pkl')
