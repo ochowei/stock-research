@@ -1,7 +1,7 @@
                    Strategy Slippage    Sharpe  Win_Rate  Total_Return  Count  Avg_Hold
-0      V5_Base (Fixed Exit)     5bps  1.289324  0.527111     10.423272   6953  5.733784
-1      V5.1_L3 (Fixed Exit)     5bps  1.233852  0.522252     10.123350   4404  5.763851
-2  V5.1_Full (Dynamic Exit)     5bps  1.026720  0.531108      7.513398   4404  5.363079
-3     V5.1_Full_Stress_0bps     0bps  1.199574  0.541099      8.773495   4404  5.351045
-4     V5.1_Full_Stress_5bps     5bps  1.026720  0.531108      7.513398   4404  5.363079
-5    V5.1_Full_Stress_10bps    10bps  0.849223  0.522480      6.221355   4404  5.374659
+0      V5_Base (Fixed Exit)     5bps  1.398179  0.520488      9.568744   5979  5.732062
+1      V5.1_L3 (Fixed Exit)     5bps  1.389228  0.515943      9.958535   3638  5.768554
+2  V5.1_Full (Dynamic Exit)     5bps  1.261663  0.525014      8.028165   3638  5.390049
+3     V5.1_Full_Stress_0bps     0bps  1.419811  0.533810      9.031959   3638  5.381803
+4     V5.1_Full_Stress_5bps     5bps  1.261663  0.525014      8.028165   3638  5.390049
+5    V5.1_Full_Stress_10bps    10bps  1.095285  0.518142      6.972137   3638  5.399945

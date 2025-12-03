@@ -1,3 +1,5 @@
+# V5.1/ml_pipeline/04_train_meta_labeling_l3.py (OOS Backtest Version)
+
 import pandas as pd
 import numpy as np
 import os
@@ -66,58 +68,35 @@ def prepare_ranking_data(stock_df, market_df, regime_df):
 
 def train_l3_ranker(df):
     """
-    Trains LGBMRanker using Walk-Forward Validation.
+    Trains LGBMRanker using Walk-Forward Validation and collects Out-of-Sample predictions.
     """
-    print("\n--- Training L3 Ranker (LambdaRank) ---")
+    print("\n--- Training L3 Ranker (LambdaRank) with Walk-Forward OOS Prediction ---")
     
-    # --- 1. Feature Selection (V5.1 Orthogonality) ---
+    # --- 1. Feature Selection ---
     feature_cols = [
-        # > Sector / Orthogonal (The Alpha Source)
-        'Sector_RSI_14', 'RSI_Divergence', 'Rel_Strength_Daily',
-        
-        # > Microstructure
-        'Down_Vol_Prop', 'Rel_Vol',
-        
-        # > Volatility / Risk
-        'ATR_Norm',
-        
-        # > L1 Regime Context
-        'HMM_State', 'Anomaly_Score',
-        
-        # > Macro Context
-        'IWO_Vol_21d', 'SPY_IWO_Div_21d', 'VIX_Change_1d'
+        'Sector_RSI_14', 'RSI_Divergence', 'Rel_Strength_Daily', # Orthogonal
+        'Down_Vol_Prop', 'Rel_Vol', # Microstructure
+        'ATR_Norm', # Volatility
+        'HMM_State', 'Anomaly_Score', # Regime
+        'IWO_Vol_21d', 'SPY_IWO_Div_21d', 'VIX_Change_1d' # Macro
     ]
     
-    # Ensure columns exist
     valid_features = [c for c in feature_cols if c in df.columns]
     print(f"  - Features used ({len(valid_features)}): {valid_features}")
     
     X = df[valid_features].copy()
     X = X.fillna(0)
     
-    # --- [CRITICAL FIX] Discretize Target for LambdaRank ---
-    # LGBMRanker requires INT labels (0, 1, 2...). 
-    # We bin the returns by day into relevance grades.
-    print("  - Discretizing returns into Relevance Grades (0-3)...")
-    
+    # Discretize Target for LambdaRank
     def get_daily_grades(group):
-        # If too few samples, fallback to simple binary
         if len(group) < 4:
             return (group > 0).astype(int)
-        
-        # Rank within the day to ensure distribution is uniform
-        # Use qcut on ranks to handle duplicate return values safely
         try:
-            # Grades: 0 (Bottom 50%), 1 (Next 30%), 2 (Next 15%), 3 (Top 5%)
             return pd.qcut(group.rank(method='first'), q=[0, 0.5, 0.8, 0.95, 1.0], labels=[0, 1, 2, 3]).astype(int)
         except Exception:
-            # Fallback
             return (group > 0).astype(int)
 
-    # Apply transformation group by timestamp
     y_grades = df['Target_Return'].groupby(level='timestamp', group_keys=False).apply(get_daily_grades)
-    
-    # Use grades as the target for training
     y = y_grades
     
     # --- 2. Create Groups for Ranking ---
@@ -129,7 +108,7 @@ def train_l3_ranker(df):
     
     print(f"  - Training over {len(unique_dates)} unique days.")
     
-    # --- 3. Walk-Forward Validation ---
+    # --- 3. Walk-Forward Validation & OOS Collection ---
     n_splits = 5
     lgbm_params = {
         'objective': 'lambdarank',
@@ -139,14 +118,16 @@ def train_l3_ranker(df):
         'n_estimators': 150,
         'learning_rate': 0.05,
         'num_leaves': 31,
-        'label_gain': [0, 1, 3, 7], # Define gain for grades 0, 1, 2, 3
+        'label_gain': [0, 1, 3, 7],
         'random_state': 42,
         'verbose': -1
     }
     
-    model = lgb.LGBMRanker(**lgbm_params)
     tscv = TimeSeriesSplit(n_splits=n_splits)
     metrics = []
+    
+    # [Modify] Initialize OOS Score Container (Default NaN)
+    oos_scores = pd.Series(data=np.nan, index=X.index, name='L3_Rank_Score')
     
     for fold, (train_date_idx, test_date_idx) in enumerate(tscv.split(unique_dates)):
         train_dates = unique_dates[train_date_idx]
@@ -159,11 +140,12 @@ def train_l3_ranker(df):
         X_train, y_train = X[train_mask], y[train_mask]
         X_test, y_test = X[test_mask], y[test_mask]
         
-        # Prepare Groups (count of rows per day)
+        # Prepare Groups
         q_train = X_train.groupby(level='timestamp', sort=False).size().values
         q_test = X_test.groupby(level='timestamp', sort=False).size().values
         
-        # Train
+        # Train (Fit on Past)
+        model = lgb.LGBMRanker(**lgbm_params)
         model.fit(
             X_train, y_train, 
             group=q_train,
@@ -175,29 +157,41 @@ def train_l3_ranker(df):
         
         # Log metric
         val_score = model.best_score_['valid_0']['ndcg@3']
-        print(f"  Fold {fold+1}: NDCG@3 = {val_score:.4f} (Train Dates: {len(train_dates)}, Test Dates: {len(test_dates)})")
+        print(f"  Fold {fold+1}: NDCG@3 = {val_score:.4f} (Test Range: {test_dates.min().date()} to {test_dates.max().date()})")
         metrics.append(val_score)
+        
+        # [Modify] Predict on Test Set (OOS) and Store
+        # Since X is sorted and we mask by date, we can assign directly
+        preds_oos = model.predict(X_test)
+        oos_scores.loc[test_mask] = preds_oos
 
-    # --- 4. Final Retrain ---
-    print("Retraining final Ranker on all data...")
+    # --- 4. Final Retrain (For Future/Live Trading ONLY) ---
+    print("Retraining final Ranker on all data (for future inference)...")
+    final_model = lgb.LGBMRanker(**lgbm_params)
     q_all = X.groupby(level='timestamp', sort=False).size().values
-    model.fit(X, y, group=q_all)
+    final_model.fit(X, y, group=q_all)
     
     # Feature Importance
     importances = pd.DataFrame({
         'Feature': valid_features,
-        'Importance': model.feature_importances_
+        'Importance': final_model.feature_importances_
     }).sort_values(by='Importance', ascending=False)
     
     print("\n[L3 Ranker Feature Importance]")
     print(importances.head(10))
     
-    # --- 5. Generate OOS Scores ---
-    # Save scores for backtest
-    scores = model.predict(X)
-    df['L3_Rank_Score'] = scores
+    # --- 5. Return OOS DataFrame ---
+    # Assign the collected OOS scores to the dataframe
+    df['L3_Rank_Score'] = oos_scores
     
-    return model, df, np.mean(metrics)
+    # Remove rows where L3_Rank_Score is NaN (The initial training period)
+    # Because we cannot backtest on the period used for the first training
+    df_oos = df.dropna(subset=['L3_Rank_Score'])
+    
+    print(f"\n[OOS Info] Generated OOS scores for {len(df_oos)} trades.")
+    print(f"           (Initial {len(df) - len(df_oos)} trades dropped due to warm-up period)")
+    
+    return final_model, df_oos, np.mean(metrics)
 
 def main():
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -208,23 +202,27 @@ def main():
     # 2. Prepare Data (Candidates & Target)
     rank_df = prepare_ranking_data(stock_f, market_f, regime_s)
     
-    # 3. Train Ranker
+    # 3. Train Ranker & Get OOS Scores
+    # Note: result_df will now only contain OOS rows
     model, result_df, avg_ndcg = train_l3_ranker(rank_df)
     
     # 4. Save Artifacts
     models_dir = os.path.join(SCRIPT_DIR, 'models')
     signals_dir = os.path.join(SCRIPT_DIR, 'signals')
     
+    os.makedirs(models_dir, exist_ok=True)
+    os.makedirs(signals_dir, exist_ok=True)
+    
     joblib.dump(model, os.path.join(models_dir, 'l3_ranker.joblib'))
     
-    # Save scores
+    # Save scores (OOS Only)
     out_cols = ['Target_Return', 'L3_Rank_Score', 'HMM_State', 'RSI_2']
     result_df[out_cols].to_csv(os.path.join(signals_dir, 'l3_rank_scores.csv'))
     
     print(f"\n[Summary] Average NDCG@3: {avg_ndcg:.4f}")
     print(f"Models saved to {models_dir}")
-    print(f"Scores saved to {signals_dir}/l3_rank_scores.csv")
-    print("Step 3: L3 Learning-to-Rank Complete.")
+    print(f"OOS Scores saved to {signals_dir}/l3_rank_scores.csv")
+    print("Step 3: L3 Learning-to-Rank (OOS Mode) Complete.")
 
 if __name__ == "__main__":
     main()
