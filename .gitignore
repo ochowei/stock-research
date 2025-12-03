@@ -13,3 +13,9 @@ env/
 build/
 dist/
 *.egg-info/
+
+# Project data
+V5.2/data/
+V5.2/features/
+V5.2/signals/
+V5.2/ml_pipeline/data/
