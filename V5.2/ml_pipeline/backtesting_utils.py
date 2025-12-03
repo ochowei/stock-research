@@ -17,9 +17,9 @@ def run_backtest(
     rm = RiskManager(target_risk=target_risk)
 
     # --- Signal Generation (Shifted to prevent lookahead bias) ---
-    # Create signals based on T-1 data. A signal on day T is based on data from T-1.
     all_data = all_data.sort_index()
-    all_data['entry_signal'] = (all_data['RSI_2'].shift(1) < 10) & (all_data['Close'].shift(1) > all_data['SMA_200'].shift(1))
+    # Corrected to use lowercase 'close'
+    all_data['entry_signal'] = (all_data['RSI_2'].shift(1) < 10) & (all_data['close'].shift(1) > all_data['SMA_200'].shift(1))
     all_data['exit_signal'] = all_data['RSI_2'].shift(1) > 50
 
     cash = initial_capital
@@ -32,7 +32,8 @@ def run_backtest(
         portfolio_value = cash
         for symbol, pos_data in positions.items():
             if symbol in daily_data['symbol'].values:
-                price_data = daily_data[daily_data['symbol'] == symbol]['Open']
+                # Corrected to use lowercase 'open'
+                price_data = daily_data[daily_data['symbol'] == symbol]['open']
                 current_price = price_data.iloc[0] if not price_data.empty else pos_data['entry_price']
                 portfolio_value += pos_data['shares'] * current_price
         equity[date] = portfolio_value
@@ -46,7 +47,8 @@ def run_backtest(
                     symbols_to_exit.append(symbol)
 
         for symbol in symbols_to_exit:
-            exit_price_data = daily_data[daily_data['symbol'] == symbol]['Open']
+            # Corrected to use lowercase 'open'
+            exit_price_data = daily_data[daily_data['symbol'] == symbol]['open']
             if not exit_price_data.empty:
                 exit_price = exit_price_data.iloc[0]
                 shares = positions.pop(symbol)['shares']
@@ -67,7 +69,8 @@ def run_backtest(
                     if symbol in positions:
                         continue
 
-                    entry_price = row['Open']
+                    # Corrected to use lowercase 'open'
+                    entry_price = row['open']
                     atr = row['ATR_14']
 
                     if atr > 0 and entry_price > 0:
