@@ -15,11 +15,12 @@ def load_data(features_path, regime_signals_path, asset_pool):
     asset_pool_cleaned = [a.replace('.', '-') for a in asset_pool]
     features_df = features_df[features_df.index.get_level_values('symbol').isin(asset_pool_cleaned)]
 
-    features_df.index = features_df.index.set_names(['timestamp', 'symbol'])
+    # Corrected merge logic: reset index and use merge
+    features_df = features_df.reset_index()
+    df = pd.merge(features_df, regime_signals_df, on='timestamp', how='left')
 
-    df = features_df.join(regime_signals_df, on='timestamp', how='left')
     df['regime_signal'] = df['regime_signal'].ffill()
-    df = df.reset_index().set_index('timestamp')
+    df = df.set_index('timestamp')
     return df
 
 def load_v5_1_benchmark(benchmark_path, all_dates, initial_capital=100000.0):
@@ -47,14 +48,12 @@ def load_v5_1_benchmark(benchmark_path, all_dates, initial_capital=100000.0):
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # The project root is one level up from the ml_pipeline directory
     project_root = os.path.abspath(os.path.join(script_dir, '..'))
 
     FEATURES_PATH = os.path.join(project_root, 'features', 'stock_features.parquet')
     REGIME_SIGNALS_PATH = os.path.join(project_root, 'signals', 'regime_signals.parquet')
     ASSET_POOL_PATH = os.path.join(script_dir, 'asset_pool.json')
     OUTPUT_DIR = os.path.join(script_dir, 'analysis')
-    # The V5.1 path needs to go up two levels from the script dir to get to the repo root
     repo_root = os.path.abspath(os.path.join(project_root, '..'))
     BENCHMARK_PATH = os.path.join(repo_root, 'V5.1', 'ml_pipeline', 'analysis', 'minimalist_trades_fixed.csv')
 

@@ -12,10 +12,12 @@ def load_data(features_path, regime_signals_path):
         print(f"Error loading data: {e}")
         return None
 
-    features_df.index = features_df.index.set_names(['timestamp', 'symbol'])
-    df = features_df.join(regime_signals_df, on='timestamp', how='left')
+    # Corrected merge logic: reset index and use merge
+    features_df = features_df.reset_index()
+    df = pd.merge(features_df, regime_signals_df, on='timestamp', how='left')
+
     df['regime_signal'] = df['regime_signal'].ffill()
-    df = df.reset_index().set_index('timestamp')
+    df = df.set_index('timestamp')
     return df
 
 def run_benchmark_backtest(all_data, initial_capital=100000.0):
@@ -50,10 +52,8 @@ def run_benchmark_backtest(all_data, initial_capital=100000.0):
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # The project root is one level up from the ml_pipeline directory
     project_root = os.path.abspath(os.path.join(script_dir, '..'))
 
-    # Corrected path for index features
     FEATURES_PATH = os.path.join(project_root, 'features', 'stock_features_index.parquet')
     REGIME_SIGNALS_PATH = os.path.join(project_root, 'signals', 'regime_signals.parquet')
     OUTPUT_DIR = os.path.join(script_dir, 'analysis')
