@@ -20,7 +20,7 @@ def download_data(tickers, start_date, end_date):
         start=start_date,
         end=end_date,
         interval='1d',
-        auto_adjust=False,
+        auto_adjust=True,
         timeout=30
     )
 
