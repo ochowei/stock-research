@@ -1,0 +1,5 @@
+# Ignore all downloaded and processed data
+data/
+features/
+models/
+signals/
