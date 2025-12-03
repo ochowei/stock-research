@@ -1,106 +1,86 @@
-# **📈 專案 V5.2-Risk 執行計畫：波動率管理與防禦體系**
+沒問題。將「參數切換」改為「獨立腳本」通常更直觀，也方便您在不同的終端機視窗同時執行兩組回測，互不干擾。
 
-**Date:** 2025-12-04  
-**Based on:** V5.2/research_plan.md  
-**Status:** #draft #execution-plan
+這是一個完全分離雙軌（Custom vs. Index）的 **V5.2 最終執行計畫**。
 
-本計畫旨在實作 V5.2-Risk 體系，將策略核心從「預測 (Prediction)」轉向「生存 (Survival)」。我們將移除不穩定的 ML 模型，轉而建立堅實的風控與部位管理系統。
+我們將整個流程拆分為 **Track A (Custom / Asset Pool)** 與 **Track B (Index / Full Market)**，關鍵步驟（下載、回測）都會有兩份獨立的腳本。
 
-## **步驟 1：數據工程與固定化 (Data Engineering & Fixing)**
+---
 
-此步驟確保數據的一致性與可重現性，並計算新的市場寬度指標。
+# **📈 專案 V5.2-Risk 執行計畫：雙軌回測體系 (Two-Track Final)**
 
-* **目標：** 鎖定回測區間，並將 Market Breadth 寫入特徵檔。
-* **執行細節：**
-    1.  **鎖定數據區間 (00\_download\_data\_v5.py):**
-        * 設定常數 `START_DATE = '2015-01-01'` 與 `END_DATE = '2025-11-30'`。
-        * 確保所有下載 (Ticker, Macro) 都嚴格遵守此區間，避免 T+1 數據變動干擾回測結果。
-    2.  **計算市場寬度 (02\_build\_features\_l0\_v5.py):**
-        * **新增邏輯：** 在計算完個別股票的 `Dist_SMA_200` 後。
-        * **聚合計算：** 每日計算 `Market_Breadth = (Count(Close > SMA200) / Total_Tickers)`。
-        * **儲存：** 將此指標合併入 `market_features_L0.parquet`，欄位名稱為 `Market_Breadth_SMA200`。
-* **產出檔案：**
-    * `data/temp_raw/*.pkl`: 固定區間的原始數據。
-    * `features/market_features_L0.parquet`: 包含 Breadth 指標的宏觀特徵。
+**Date:** 2025-12-04
+**Based on:** V5.2/research_plan.md
+**Status:** #execution-plan #final #dual-track
 
-## **步驟 2：風控引擎開發 (Risk Engine Implementation)**
+本計畫旨在實作 V5.2-Risk 體系，並透過**雙軌並行**的方式，驗證策略在「自選清單」與「全市場指數」上的表現差異。
 
-此步驟是 V5.2 的核心，建立獨立的風控模組，供回測與實盤共用。
+## **步驟 0：數據工程 (Data Engineering)**
 
-* **目標：** 實作波動率部位管理與總曝險控制。
-* **執行細節 (risk\_manager.py):**
-    * 建立 `RiskManager` 類別。
-    * **方法 1 `calculate_position_size(account_equity, target_risk_pct, asset_atr)`:**
-        * 實作公式：`Shares = (Equity * Target_Risk) / (ATR * Stop_Loss_Multiplier)`。
-        * *(註: V5.2 預設 Stop Loss 距離通常設為 1~2 倍 ATR)*。
-    * **方法 2 `check_exposure_ceiling(current_exposure, max_exposure_limit)`:**
-        * 檢查是否允許開新倉。
-* **產出檔案：**
-    * `ml_pipeline/risk_manager.py`: 可重用的風控模組。
+我們將建立兩套下載腳本，分別負責不同的標的來源，並存入不同的資料夾以防混淆。
 
-## **步驟 3：規則導向濾網構建 (Rule-Based Regime Filter)**
+* **共用設定：**
+    * 回測區間：`2015-01-01` 至 `2025-11-30`。
+    * 資料夾結構：`data/custom/` vs `data/index/`。
 
-此步驟取代原有的 HMM 模型訓練，改為直觀的規則判斷。
+* **Track A: 自選清單下載 (`00_download_custom.py`)**
+    * **來源：** 讀取 `ml_pipeline/asset_pool.json`。
+    * **輸出：** `data/custom/raw_tickers.pkl`, `data/custom/raw_macro.pkl`。
 
-* **目標：** 產出基於市場寬度的防禦訊號。
-* **執行細節 (03\_build\_regime\_filter.py):**
-    * **輸入：** 讀取 `market_features_L0.parquet`。
-    * **邏輯：**
-        * 讀取 `Market_Breadth_SMA200`。
-        * 設定閾值 (e.g., `BREADTH_THRESHOLD = 0.20`)。
-        * 若 `Breadth < Threshold`，標記 `Regime_Signal = 2` (Crash/Defense Mode)。
-        * 若 `Breadth >= Threshold`，標記 `Regime_Signal = 0` (Safe)。
-    * **輸出：** 產生與 V5.1 格式兼容的 `regime_signals.parquet`，以便下游程式無縫接軌。
-* **產出檔案：**
-    * `signals/regime_signals.parquet`: 每日防禦訊號。
+* **Track B: 全市場清單下載 (`00_download_index.py`)**
+    * **來源：** 使用 `pd.read_html` 爬取 Wikipedia 的 **S&P 100** 與 **Nasdaq 100** 最新成分股。
+    * **輸出：** `data/index/raw_tickers.pkl`, `data/index/raw_macro.pkl`。
 
-## **步驟 4：回測與壓力測試 (Backtesting & Stress Test)**
+## **步驟 1~3：特徵與訊號處理 (Feature & Signal)**
 
-此步驟驗證風控模組是否能有效降低 MaxDD。
+為了避免維護過多腳本，中間處理步驟（01, 02, 03）建議保持一份，但透過**修改頂部變數**或**自動偵測**來決定處理哪個資料夾。
 
-* **目標：** 執行 V5.2 回測，並與 V5.1 Minimalist Benchmark 進行對比。
-* **執行細節 (05\_backtest\_v5\_2.py):**
-    * **重構回測迴圈：**
-        * 引入 `RiskManager`。
-        * 在 `Entry Logic` 中，將原本的 `Fixed Capital` 改為呼叫 `risk_manager.calculate_position_size()`。
-        * 在 `Entry Logic` 前，加入 `Market Breadth` 的過濾檢查 (若訊號為 Crash 則跳過)。
-    * **參數設定 (實驗組):**
-        * `Target Risk`: 0.5% ~ 1.0% per trade。
-        * `Breadth Threshold`: 20%。
-    * **報告生成：**
-        * 計算 **Calmar Ratio**。
-        * 繪製 **Underwater Plot** (專注於回撤深度)。
-* **產出檔案：**
-    * `analysis/v5.2_backtest_report.txt`: 詳細績效報告。
-    * `analysis/drawdown_comparison.png`: 深度回撤比較圖。
+* **`01_format_data.py`**: 將 `data/custom` 與 `data/index` 內的 pkl 轉為 parquet。
+* **`02_build_features.py`**:
+    * 計算 **Market Breadth** (市場寬度)：S&P 100 成分股 > SMA200 的比例。
+    * *注意：Track A (自選) 因為樣本數少，計算寬度可能失真，建議 Track A 直接引用 Track B 計算出來的 Market Breadth 作為外部大盤濾網。*
+* **`03_build_regime_filter.py`**:
+    * 產出防禦訊號 `regime_signals.parquet` (Breadth < 20% = Crash)。
 
-## **步驟 5：實盤腳本更新 (Production Update)**
+## **步驟 4：雙軌回測與基準對比 (Backtesting)**
 
-* **目標：** 確保實盤推論邏輯與 V5.2 回測邏輯一致。
-* **執行細節 (run\_daily\_inference.py):**
-    * **移除：** HMM 模型載入、L3 Ranker 模型載入。
-    * **新增：** 實作即時 Market Breadth 計算 (需下載當日所有成分股數據)。
-    * **整合：** 呼叫 `RiskManager` 計算建議股數。
-    * **輸出：** CSV 包含 `Symbol`, `Close`, `ATR`, `Suggested_Shares`。
+這是驗證的核心，兩份腳本分別跑出結果，最後進行對比。
+
+* **Track A: 自選清單回測 (`05_backtest_custom.py`)**
+    * **標的：** `asset_pool.json`。
+    * **Benchmark：** 載入 V5.1 的 `minimalist_trades.csv` 進行 Apple-to-Apple 對比。
+    * **風控：** 啟用 `RiskManager` (Vol-Targeting) + `RegimeFilter`。
+    * **輸出：** `analysis/custom_performance.csv`, `analysis/custom_equity.png`。
+
+* **Track B: 全市場回測 (`05_backtest_index.py`)**
+    * **標的：** S&P 100 + Nasdaq 100 全成分股。
+    * **Benchmark：** 需額外計算一個 "Index Buy&Hold" 或 "Index Equal Weight" 作為基準。
+    * **目的：** 壓力測試。驗證策略是否只對特定妖股有效，還是具有普適性。
+    * **輸出：** `analysis/index_performance.csv`, `analysis/index_equity.png`。
+
+## **步驟 5：未來展望 (Future Work / Backlog)**
+
+以下項目不包含在本次 V5.2 實作，但保留為後續研究方向：
+
+1.  **擴展標的池：** IWO (Russell 2000), VOO (S&P 500) 成分股。
+2.  **高頻數據 ML：** 引入 5m/15m K線與盤前盤後 (ETH) 數據，重啟 L3/L4 模型研究。
+3.  **ML 模組修復：** 重新訓練 L1 HMM (解決滯後問題) 與 L3 Ranker (解決過擬合)。
 
 ## **檔案清單 (Files Summary)**
 
-### **需修改或新增 (Modified/New)**
+### **V5.2-Risk 專案結構**
 
-1.  **`ml_pipeline/00_download_data_v5.py`** (Modified): 加入固定日期區間限制。
-2.  **`ml_pipeline/02_build_features_l0_v5.py`** (Modified): 新增 Market Breadth 計算。
-3.  **`ml_pipeline/03_build_regime_filter.py`** (**New**): 規則導向的狀態生成腳本 (取代 ML 訓練)。
-4.  **`ml_pipeline/risk_manager.py`** (**New**): 獨立風控邏輯模組。
-5.  **`ml_pipeline/05_backtest_v5_2.py`** (**New**): 支援動態部位管理的新回測引擎。
-6.  **`ml_pipeline/run_daily_inference.py`** (Modified): 更新為 V5.2 邏輯。
+| 類別 | 檔名 | 說明 |
+| :--- | :--- | :--- |
+| **Download** | **`00_download_custom.py`** | 下載 asset_pool.json 數據 |
+| | **`00_download_index.py`** | 下載 S&P/Nasdaq 100 數據 |
+| **Process** | `01_format_data.py` | 格式化數據 (通用) |
+| | `02_build_features.py` | 計算特徵與市場寬度 (通用) |
+| **Filter** | `03_build_regime_filter.py` | 產生規則導向的 L1 訊號 |
+| **Module** | **`risk_manager.py`** | 獨立風控模組 (Class) |
+| **Backtest** | **`05_backtest_custom.py`** | 回測自選清單 (含 V5.1 對比) |
+| | **`05_backtest_index.py`** | 回測全市場清單 (壓力測試) |
+| **Production** | `run_daily_inference.py` | 實盤每日推論腳本 |
+| **Config** | `asset_pool.json` | 自選股清單 |
+| | `requirements.txt` | 套件清單 |
 
-### **直接沿用 (Unchanged)**
-
-1.  `ml_pipeline/01_format_data_v5.py`
-2.  `ml_pipeline/asset_pool.json`
-3.  `ml_pipeline/requirements.txt`
-
-### **暫時移除 (Removed/Archived)**
-
-1.  `ml_pipeline/03_train_regime_model_l1.py` (HMM)
-2.  `ml_pipeline/04_train_meta_labeling_l3.py` (Ranker)
+這樣規劃後，您可以清楚地得到兩份獨立的報告，一份告訴您「策略在您的愛股上表現如何 (vs V5.1)」，另一份告訴您「策略在統計學上的真實穩健度」。
