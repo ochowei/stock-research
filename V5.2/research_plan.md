@@ -7,16 +7,10 @@
 ## **1. 研究背景與核心目標 (Context & Objectives)**
 
 ### **1.1 V5.1 實相檢驗總結**
-V5.1 的實驗證明了簡單規則 (`RSI(2) < 10` & `Price > SMA(200)`) 具有強大的獲利能力 (9年 8.5倍)，但其 **-48.24% 的最大回撤 (MaxDD)** 意味著該策略在 2020 疫情熔斷與 2022 升息熊市中幾乎面臨破產風險。
+V5.1 的實驗證明了簡單規則 (`RSI(2) < 10` & `Price > SMA(200)`) 具有強大的獲利能力 (9年 8.5倍)，但其 **-48.24% 的最大回撤 (MaxDD)** 意味著該策略在 2020 疫情熔斷與 2022 升息熊市中幾乎面臨破產風險。複雜的 ML 模型 (L3/L4) 因過度擬合與訊號雜訊，反而劣化了績效。
 
 ### **1.2 V5.2 核心目標：生存優先**
 本階段目標是將 V5 Baseline 的最大回撤控制在 **-20% ~ -25%** 以內，同時保留至少 **70%** 的總回報。我們將重心從預測「哪隻股票會漲」轉向「該買多少」（Position Sizing）以及「何時完全空手」（Market Filter）。
-
-### **1.3 擱置與待修復項目 (Dormant Modules)**
-以下模組在 V5.1 表現不如預期或過於復雜，將在 V5.2 中暫時移除，歸類為「待修復 (On Hold)」項目，未來視需要重新啟動研究：
-* **L1 HMM (隱馬可夫模型):** 因反應滯後 (Lag) 嚴重，暫時以 Rule-Based 的市場寬度取代。
-* **L3 Ranker (LGBM 排序):** 因樣本外表現不穩定，暫時以純 RSI 數值排序取代。
-* **L4 Dynamic Exit (ML 預測):** 因容易在反彈初期被洗出場，暫時以 ATR 動態止盈規則取代。
 
 ## **2. 策略方法論 (Methodology)**
 
@@ -72,11 +66,41 @@ V5.2 將不再使用固定金額開倉，而是根據各別標的的波動率動
     * `Breadth Threshold` (e.g., 15%, 20%, 30%)
 2.  **目標函數:** 最大化 **Calmar Ratio** (Annual Return / MaxDD)。
 
-## **5. 預期產出 (Deliverables)**
+## **5. 未來展望與積壓工作 (Future Work / Backlog)**
 
-* **Code:**
-    * `risk_manager.py`: 獨立風控模組。
-    * `05_backtest_v5_2.py`: 支援動態倉位的新回測腳本。
-* **Report:**
-    * `analysis/v5.2_benchmark_comparison.csv`: 詳細列出 V5.1 (Fixed) vs V5.2 (Risk-Aware) 的各項指標對比。
-    * `analysis/drawdown_comparison.png`: 回撤深度比較圖 (Underwater Plot)。
+以下項目為潛在的高價值研究方向，暫不納入 V5.2 的核心開發，但保留作為 V6 或後續版本的迭代基礎。
+
+### **5.1 ML 模組重啟與修復 (Revival of ML Modules)**
+* **L1 HMM (Regime Detection):**
+    * *問題:* 在 V5.1 中對崩盤反應有顯著滯後 (Lag)。
+    * *計畫:* 未來可嘗試縮短窗口、加入更靈敏的特徵 (如 VIX Term Structure)，或改用 HMM-GARCH 模型來提升反應速度。
+* **L3 Ranker (Signal Filtering):**
+    * *問題:* 樣本外 (OOS) 表現不穩定，與簡單 RSI 排序相比無顯著優勢。
+    * *計畫:* 待風控穩定後，可重新引入 L3，但需尋找與技術指標低相關的「正交特徵」(如新聞情緒、籌碼面) 作為輸入，避免資訊重疊。
+* **L4 Dynamic Exit (Alpha Prediction):**
+    * *問題:* 容易在反彈初期被洗出場。
+    * *計畫:* 重新訓練模型以預測「持倉剩餘利潤期望值」，而非單純的漲跌機率。
+
+### **5.2 ML 數據粒度與時段優化 (Data Granularity & Session Timing)**
+針對未來重啟的 ML 模型 (L3/L4)，需考慮引入更精細的數據以捕捉微觀結構：
+* **更細的時間粒度 (5m / 15m Duration):**
+    * 目前模型僅使用日線 (Daily)。未來可引入 5 分鐘或 15 分鐘 K 線數據，訓練模型識別日內的反轉形態 (Intraday Reversal Patterns)，優化進場與出場的精確時機。
+* **盤前盤後數據 (Extended Trading Hours, ETH):**
+    * 除了正常交易時段 (RTH)，應納入 ETH 數據。許多重大消息與劇烈波動發生在盤前或盤後，將 ETH 的波動率與量能納入特徵，可能有助於 L1 模型更早偵測到異常風險。
+
+### **5.3 交易標的池擴展 (Universe Expansion)**
+* **中小盤成長股 (IWO / Russell 2000):**
+    * 目前 V5.2 鎖定 S&P 100 以確保流動性。未來若風控模型 (V5.2) 驗證有效，可嘗試將標的擴展至 IWO 成分股，測試策略在高波動、高 Beta 資產上的獲利潛力。
+* **板塊輪動 (Sector Rotation):**
+    * 測試針對不同板塊 (如 QQQ 科技股 vs. XLP 必需消費股) 設定不同的參數或閾值，而非全市場一體適用。
+
+### **5.4 進階驗證與數據增強 (Advanced Validation & Data)**
+* **合成壓力測試 (Synthetic Stress Test):**
+    * 實作 TimeGAN 生成未曾發生過的極端市場路徑 (如長期滯脹或閃崩)，驗證 L1 寬度濾網與 ATR 風控的極限生存能力。
+* **基本面與替代數據濾網:**
+    * **Earnings Date:** 加入財報日迴避邏輯。
+    * **Sentiment Analysis:** 引入新聞或社群情緒分數作為輔助濾網。
+    * **Microstructure:** 利用量能結構 (`Down_Vol_Prop`) 區分恐慌拋售與陰跌，優化進場時機。
+
+---
+**結語:** V5.2 是策略成熟化的關鍵一步。我們先放下 AI 的預測水晶球，拿起統計學的盾牌。唯有先確保在任何市場環境下都能生存，複利的力量才能發揮作用。
