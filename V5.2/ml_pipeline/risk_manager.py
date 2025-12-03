@@ -4,41 +4,45 @@ class RiskManager:
     """
     Manages position sizing and exposure based on volatility and market regime.
     """
-    def __init__(self, target_risk=0.01):
+    def __init__(self, target_risk=0.01, max_position_pct=0.2):
         """
         Initializes the RiskManager.
         Args:
             target_risk (float): The target risk percentage per trade (e.g., 0.01 for 1%).
+            max_position_pct (float): Maximum percentage of total capital allocated to a single position (e.g., 0.2 for 20%).
         """
         self.target_risk = target_risk
+        self.max_position_pct = max_position_pct
 
     def calculate_position_size(self, total_capital, stock_price, atr):
         """
-        Calculates the position size based on volatility-scaled sizing.
-        Formula: Position Size = (Total Capital * Target Risk %) / Stock ATR
-        Args:
-            total_capital (float): The total account value.
-            stock_price (float): The current price of the stock.
-            atr (float): The Average True Range (ATR) of the stock.
-        Returns:
-            float: The number of shares to purchase. Returns 0 if ATR is zero.
+        Calculates the position size based on volatility-scaled sizing with a hard cap.
+        Formula:
+            1. Volatility Size = (Total Capital * Target Risk %) / Stock ATR
+            2. Max Size = (Total Capital * Max Position %) / Stock Price
+            3. Final Size = Min(Volatility Size, Max Size)
         """
-        if atr == 0:
+        if atr == 0 or stock_price == 0:
             return 0
 
-        dollar_amount = total_capital * self.target_risk
-        position_size_shares = dollar_amount / atr
-        return position_size_shares
+        # 1. Volatility-based sizing
+        dollar_risk = total_capital * self.target_risk
+        vol_shares = dollar_risk / atr
+
+        # 2. Hard Cap sizing (Position Limit)
+        max_dollar_alloc = total_capital * self.max_position_pct
+        cap_shares = max_dollar_alloc / stock_price
+
+        # 3. Take the smaller of the two (Conservative approach)
+        final_shares = min(vol_shares, cap_shares)
+
+        return int(final_shares) # Return integer shares
 
     def apply_regime_filter(self, regime_signal):
         """
-        Determines if new entries are allowed based on the market regime signal.
-        If Regime Signal == 2 (Crash/Panic), no new entries are allowed.
-        Args:
-            regime_signal (int): The current regime signal (e.g., from regime_signals.parquet).
-        Returns:
-            bool: True if trading is allowed, False otherwise.
+        Determines if new entries are allowed.
+        Regime 2 (Crash) -> Block Entry.
         """
         if regime_signal == 2:
-            return False  # Do not allow new entries
-        return True  # Allow new entries
+            return False
+        return True
