@@ -8,82 +8,128 @@ def run_backtest(
     all_data,
     initial_capital=100000.0,
     target_risk=0.01,
+    max_position_pct=0.2, # 新增：單筆最大倉位 20%
     slippage_bps=5,
-    transaction_cost_bps=5
+    transaction_cost_bps=5,
+    hold_days=5 # 新增：固定持有天數
 ):
     """
-    Runs a backtest with corrected T-1 signal generation and hold-until-exit logic.
+    Runs a backtest with Liquidation, Time-Stop, and Sorted Entries.
     """
-    rm = RiskManager(target_risk=target_risk)
+    # 初始化風控模組 (含倉位上限)
+    rm = RiskManager(target_risk=target_risk, max_position_pct=max_position_pct)
 
-    # --- Signal Generation (Shifted to prevent lookahead bias) ---
+    # --- Signal Generation ---
     all_data = all_data.sort_index()
-    # Corrected to use lowercase 'close'
+    # Entry: RSI < 10 & Price > SMA200 (T-1 generated, executed at T Open)
     all_data['entry_signal'] = (all_data['RSI_2'].shift(1) < 10) & (all_data['close'].shift(1) > all_data['SMA_200'].shift(1))
-    all_data['exit_signal'] = all_data['RSI_2'].shift(1) > 50
+
+    # Exit 1: Technical Exit (RSI > 50)
+    all_data['tech_exit_signal'] = all_data['RSI_2'].shift(1) > 50
 
     cash = initial_capital
-    positions = {}  # {symbol: {shares: float, entry_price: float}}
+    # Positions structure: {symbol: {'shares': float, 'entry_price': float, 'days_held': int}}
+    positions = {}
     equity = pd.Series(index=all_data.index.unique().sort_values())
 
     # --- Main Backtest Loop ---
     for date, daily_data in all_data.groupby(level=0):
-        # 1. Value portfolio at start of day
+
+        # 0. Get Market Regime for Today
+        # 假設所有標的當天的 regime_signal 是一樣的 (來自 Macro)
+        current_regime = 0
+        if 'regime_signal' in daily_data.columns:
+            current_regime = daily_data['regime_signal'].iloc[0]
+
+        # 1. Value portfolio at start of day (Mark-to-Market)
         portfolio_value = cash
         for symbol, pos_data in positions.items():
             if symbol in daily_data['symbol'].values:
-                # Corrected to use lowercase 'open'
                 price_data = daily_data[daily_data['symbol'] == symbol]['open']
                 current_price = price_data.iloc[0] if not price_data.empty else pos_data['entry_price']
                 portfolio_value += pos_data['shares'] * current_price
         equity[date] = portfolio_value
 
-        # 2. Process Exits
+        # 2. Process Exits (含緊急清倉與時間止損)
         symbols_to_exit = []
-        for symbol, pos_data in positions.items():
-            if symbol in daily_data['symbol'].values:
-                exit_signal_row = daily_data[daily_data['symbol'] == symbol]
-                if not exit_signal_row.empty and exit_signal_row['exit_signal'].iloc[0]:
+
+        # [Fix] Increment days_held for all positions *before* checking for exits.
+        for pos_data in positions.values():
+            pos_data['days_held'] += 1
+
+        # [Defense Upgrade] 緊急清倉機制 (Liquidation)
+        if current_regime == 2:
+            # 如果是崩盤模式，清空所有持倉
+            symbols_to_exit = list(positions.keys())
+        else:
+            # 正常模式：檢查技術指標與時間止損
+            for symbol, pos_data in positions.items():
+                should_sell = False
+
+                # A. 時間止損 (Time Stop)
+                if pos_data['days_held'] >= hold_days:
+                    should_sell = True
+
+                # B. 技術出場 (RSI > 50)
+                if not should_sell and symbol in daily_data['symbol'].values:
+                    exit_signal_row = daily_data[daily_data['symbol'] == symbol]
+                    if not exit_signal_row.empty and exit_signal_row['tech_exit_signal'].iloc[0]:
+                        should_sell = True
+
+                if should_sell:
                     symbols_to_exit.append(symbol)
 
+        # 執行賣出
         for symbol in symbols_to_exit:
-            # Corrected to use lowercase 'open'
+            if symbol not in positions: continue # 避免重複刪除
+
+            # 取得賣出價格 (Open)
             exit_price_data = daily_data[daily_data['symbol'] == symbol]['open']
+
+            # 若數據缺失 (停牌)，則無法賣出，保留至隔日
             if not exit_price_data.empty:
                 exit_price = exit_price_data.iloc[0]
                 shares = positions.pop(symbol)['shares']
 
+                # 結算資金
                 exit_price_adj = exit_price * (1 - slippage_bps / 10000)
                 proceeds = shares * exit_price_adj
                 costs = proceeds * (transaction_cost_bps / 10000)
                 cash += proceeds - costs
 
-        # 3. Process Entries
-        entry_signals = daily_data[daily_data['entry_signal']]
+        # 3. Process Entries (僅在非崩盤時買入)
+        if rm.apply_regime_filter(current_regime):
+            entry_signals = daily_data[daily_data['entry_signal']]
 
-        if not entry_signals.empty:
-            current_regime = entry_signals['regime_signal'].iloc[0]
-            if rm.apply_regime_filter(current_regime):
+            if not entry_signals.empty:
+                # [Fix] 訊號排序：優先買入 RSI 最低 (超賣最嚴重) 的股票
+                entry_signals = entry_signals.sort_values(by='RSI_2', ascending=True)
+
                 for _, row in entry_signals.iterrows():
                     symbol = row['symbol']
                     if symbol in positions:
                         continue
 
-                    # Corrected to use lowercase 'open'
                     entry_price = row['open']
                     atr = row['ATR_14']
 
                     if atr > 0 and entry_price > 0:
+                        # 使用新的倉位計算 (含上限)
                         shares = rm.calculate_position_size(portfolio_value, entry_price, atr)
 
-                        entry_price_adj = entry_price * (1 + slippage_bps / 10000)
-                        cost_of_trade = shares * entry_price_adj
-                        transaction_fees = cost_of_trade * (transaction_cost_bps / 10000)
-                        total_cost = cost_of_trade + transaction_fees
+                        if shares > 0:
+                            entry_price_adj = entry_price * (1 + slippage_bps / 10000)
+                            cost_of_trade = shares * entry_price_adj
+                            transaction_fees = cost_of_trade * (transaction_cost_bps / 10000)
+                            total_cost = cost_of_trade + transaction_fees
 
-                        if cash >= total_cost:
-                            cash -= total_cost
-                            positions[symbol] = {'shares': shares, 'entry_price': entry_price_adj}
+                            if cash >= total_cost:
+                                cash -= total_cost
+                                positions[symbol] = {
+                                    'shares': shares,
+                                    'entry_price': entry_price_adj,
+                                    'days_held': 0 # 初始化持倉天數
+                                }
 
     return equity.dropna()
 
@@ -94,7 +140,14 @@ def analyze_performance(equity_curve, output_dir, filename_prefix, title, benchm
             return 0, 0, 0, -1
         returns = curve.pct_change().fillna(0)
         total_return = (curve.iloc[-1] / curve.iloc[0]) - 1
-        cagr = (curve.iloc[-1] / curve.iloc[0]) ** (252 / len(curve)) - 1 if len(curve) > 252 else total_return
+        # CAGR handling for periods < 1 year
+        days = (curve.index[-1] - curve.index[0]).days
+        years = days / 365.25
+        if years > 0:
+            cagr = (curve.iloc[-1] / curve.iloc[0]) ** (1 / years) - 1
+        else:
+            cagr = total_return
+
         sharpe = returns.mean() / returns.std() * np.sqrt(252) if returns.std() != 0 else 0
         rolling_max = curve.cummax()
         drawdown = (curve - rolling_max) / rolling_max
