@@ -1,83 +1,88 @@
-# **研究計畫：V5.3-Dynamic 智能攻防與動態出場系統 (Final Revised)**
+# **研究計畫：V5.3-Dynamic (Track A) 數據檢核與動態攻防系統 (Final Revised v2)**
 
 **Date:** 2025-12-04
-**Based on:** V5.2 (Survival) & V5.1 (Lessons Learned)
-**Topics:** \#quant-trading \#hybrid-defense \#dynamic-exit \#ablation-study \#slippage-stress
-**Status:** \#execution-plan
+**Focus:** 🟢 **Free Data Only (yfinance)**
+**Goal:** 在免費數據限制下，確保數據品質，並驗證動態風控是否優於「固定持有」與「死抱」。
 
-## **1. 研究背景與核心目標 (Context & Objectives)**
+## **階段一：數據審計與基準重現 (Data Audit & Baselining)**
 
-### **1.1 V5.2 成功與侷限**
-V5.2 確立了「生存基石」，透過 ATR 控倉與市場寬度濾網，成功將回撤控制在 -25% 內。然而，**剝離研究 (Ablation Study)** 顯示，「5天時間止損」是績效的最大拖油瓶，截斷了妖股的主升段利潤。
+**目標：** 在開發新功能前，先確保數據品質，並建立清洗後的標準測試集。
 
-### **1.2 V5.3 核心目標**
-在 **繼承 V5.2 所有風控底層** 的前提下，透過 **「混合防禦」** 與 **「動態追蹤」**，解決 V5.2 「太早賣」與「太晚跑」的問題。
+### **1.1 工作項目：數據覆蓋率分析與清洗 (Data Sufficiency Analysis & Cleaning)**
+* **問題：** 繼承自 V5.2 的 `asset_pool.json` 與 `toxic_asset_pool.json` 是靜態清單，可能包含大量在早期年份（如 2015-2018）尚未上市或流動性不足的標的。
+* **執行動作 (撰寫 `00_audit_data.py`):**
+    1.  **備份原始清單：** 將 V5.2 的原始檔案重新命名為 `origin_asset_pool.json` 與 `origin_toxic_asset_pool.json`。
+    2.  **數據審計：** 計算每檔標的在 2015-2025 間的「有效交易日」比例與成交量密度。
+    3.  **清洗與生成：** 生成經過清洗的 **新版** `asset_pool.json` 與 `toxic_asset_pool.json`。
+    4.  **產出報告：** 生成 `data_selection_report.md`，描述篩選邏輯與被剔除的標的。
+    5.  **覆蓋率視覺化：** 產出 `data_coverage_over_time.png`，確認各年份有效標的數量（目標 > 30 檔）。
 
-* **目標：** 顯著擊敗 V5.2 Merged Pool (Sharpe 0.87, Return 481%)。
-* **約束：** 在 Toxic Pool 壓力測試中，最大回撤不得超過 -30%。
-
-## **2. 系統架構：混合與動態 (Hybrid & Dynamic Architecture)**
-
-V5.3 不是全盤推翻，而是在 V5.2 的鋼骨上加裝動態感應器。
-
-### **2.1 L1 防禦層：混合式崩盤預警 (Hybrid L1)**
-結合「模型的敏銳度」與「規則的剛性」。
-
-* **A. 預測模組 (XGBoost Classifier):**
-    * **Target:** 預測未來 10 日 `MaxDD > 5%` 或 `VIX > 30` 的機率。
-    * **Action:** 若風險機率高，**收緊** ATR 止損倍數 (e.g., 3.0x -> 1.5x) 並停止開新倉。
-* **B. 硬性熔斷 (Hard Liquidation - V5.2 Foundation):**
-    * **Rule:** 若 `Market Breadth (S&P 100 > SMA200)` < **15%**。
-    * **Action:** **強制市價清倉**。此規則具有**最高優先級 (Override)**，無視任何模型預測。這是對抗「模型失靈」的最後一道防線。
-
-### **2.2 L3 排序層：基本面增強 (Fundamental-Enhanced Ranking)**
-* **特徵工程:** 引入 P/S Ratio, Revenue Growth (QoQ)。
-* **頻率對齊 (Frequency Check):** 必須計算基本面因子與短線回報的 IC 值。若 IC 不顯著，則回退至 V5.2 的純 RSI 排序，避免引入雜訊。
-
-### **2.3 L4 出場層：動態追蹤止盈 (ATR Trailing Stop)**
-取代固定的 5 天持有期。
-
-* **機制:** `Stop_Price = Highest_High - (K * ATR)`。
-* **動態 K 值:** 由 L1 模型決定。市場安全時 $K=3$ (放寬讓利潤跑)，市場危險時 $K=1.5$ (快速鎖利)。
-* **滑價懲罰分級 (Slippage Penalty Grading):**
-    * **Entry (Limit Order):** 設為 **5bps** (與 V5.2 相同)。
-    * **Trailing Exit (Stop Market Order):** 設為 **10bps**。因為動態止損通常觸發於價格快速下跌時，滑價成本必然高於限價單。
-
-### **2.4 底層風控 (Risk Foundation - Inherited)**
-* **Position Cap:** 單一標的權重上限 (20%)。防止基本面數據錯誤 (如市值計算錯誤) 導致 ATR Sizing 失控。
-* **ATR Sizing:** 維持 V5.2 的波動率倒數加權邏輯。
-
-## **3. 執行階段規劃 (Execution Phases)**
-
-* **Phase 1: 數據與基礎設施** (繼承 `data_loader`, 擴充基本面數據)。
-* **Phase 2: 模型開發** (訓練 L1 XGBoost 崩盤預警, L3 Learning-to-Rank)。
-* **Phase 3: 機制實作** (修改 `backtesting_utils` 支援 Trailing Stop 與 分級滑價)。
-* **Phase 4: 驗證與剝離研究** (執行下列關鍵驗證協議)。
-
-## **4. 驗證協議：剝離研究 (Ablation Study)**
-
-為了證明 V5.3 的複雜度是值得的，必須執行以下 **「減法測試」**。基準 (Baseline) 為 **V5.3 Full System**。
-
-我們將測試分為三組：**動態效益驗證**、**防禦底層驗證**、**成本壓力驗證**。
-
-| 測試組別 | 測試場景 (Scenario) | 移除/修改組件 | 測試目的 (Hypothesis to Validate) |
-| :--- | :--- | :--- | :--- |
-| **A. 動態效益** | **No Trailing Stop** | 回退至 **固定 5 天出場** | 證明 L4 動態出場真的能抓到肥尾利潤 (Fat Tail)，而不僅是增加交易次數。 |
-| | **No Predictive Defense** | 回退至 **純 V5.2 寬度濾網** | 證明 L1 模型能比硬性規則「更早」偵測風險，減少回撤幅度。 |
-| | **No Fundamental Sort** | 回退至 **純 RSI 排序** | 證明加入基本面數據能提升選股勝率 (Win Rate)，而非僅是噪聲。 |
-| **B. 防禦底層** | **No Hard Liquidation** | 移除 **強制清倉** (僅靠模型) | **(關鍵)** 證明當模型預測失敗 (False Negative) 時，V5.2 的硬性規則是救命稻草。 |
-| | **No Position Cap** | 移除 **20% 上限** | 測試在基本面數據異常時，ATR Sizing 是否會導致單一標的過度曝險。 |
-| **C. 成本壓力** | **No Slippage Penalty** | 全程使用 **統一 5bps** | **(真實性檢查)** 移除對 Stop Order 的 10bps 懲罰。若此場景績效遠高於 Baseline，代表策略利潤可能被滑價吃光，需重新評估可行性。 |
-
-## **5. 成功指標 (Success Metrics)**
-
-| 指標 | V5.2 Merged (基準) | V5.3 目標 |
-| :--- | :--- | :--- |
-| **Total Return** | 481% | **> 600%** (由 L4 貢獻) |
-| **Max Drawdown** | -25.8% | **< -25%** (由 L1 貢獻) |
-| **Sharpe Ratio** | 0.87 | **> 1.0** |
-| **Ablation Validity** | N/A | 所有剝離場景的績效皆應 **低於** Full System (代表每個組件都有貢獻)。 |
+### **1.2 工作項目：基準線重現 (Benchmark Re-implementation)**
+* **目標：** 使用 **清洗後的新版清單** 跑出 V5.1 與 V5.2 的成績單作為對照。
+* **執行動作:**
+    * **Benchmark A (V5.1 Aggressive):** 邏輯: `Fixed 5-Day` + `No Filter` + `Equal Weight`。
+    * **Benchmark B (V5.2 Risk-Aware):** 邏輯: `Fixed 5-Day` + `Breadth Filter` + `ATR Sizing` (即 V5.2 Full System)。
+    * **產出:** `analysis/baseline_performance.csv`。
 
 ---
-**結語:**
-V5.3 是一次「防守反擊」的升級。我們在 V5.2 的 **防禦底層 (Liquidation, Position Cap)** 之上，疊加了 **滑價分級** 的現實考驗，確保策略不僅在理論上可行，在包含交易摩擦的真實市場中依然具備超額獲利能力。
+
+## **階段二：核心系統實作 (Core Implementation - Track A)**
+
+### **2.1 L4 出場層：動態追蹤止盈 (ATR Trailing Stop)**
+* **機制:** 取代 V5.2 的固定 5 天出場。
+* **邏輯:**
+    * $Stop = Entry - (3.0 \times ATR)$
+    * $New\_Stop = Highest\_High - (K \times ATR)$
+    * **動態 K:** 當 `RSI > 70` 或 `L1 Risk = High` 時，緊縮至 $K=1.5$。
+* **滑價:** Entry 5bps / Exit **10bps** (模擬市價停損滑價)。
+
+### **2.2 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
+* **A. 硬性熔斷:** `Breadth < 15%` -> 強制清倉。
+* **B. 預測模組 (Price Action XGBoost):** 預測短期波動風險，僅調整 L4 參數，不強制清倉。
+
+---
+
+## **階段三：驗證與壓力測試 (Verification)**
+
+### **3.1 剝離研究 (Ablation Study)**
+在同一份數據池 (清洗後的 Normal + Toxic) 上，比較以下場景：
+
+1.  **V5.3 (Full):** L1 混合防禦 + L4 動態出場。
+2.  **V5.3 (No L1):** 僅 L4 動態出場 (測試 L4 自身的獲利能力)。
+3.  **V5.3 (No Stop / 死抱):** **(新增)** 關閉 L4 動態止盈與時間止損，持有直到觸發 L1 熔斷或 RSI > 90 極端訊號。驗證 L4 的 Trailing Stop 是否比「死抱」更優秀。
+4.  **V5.2 (Benchmark):** 固定 5 天 + 硬性熔斷 (測試 V5.3 是否超越前代)。
+
+### **3.2 毒性生存測試 (Survivorship Stress Test)**
+* 專注觀察 **清洗後新版** `toxic_asset_pool.json` 中的標的。
+* **成功標準:** V5.3 在毒性池中的 MaxDD 需優於 V5.2，且總回報不應歸零。
+
+---
+
+## **執行順序 (Execution Steps)**
+
+1.  **[Step 0] 數據清洗:** 執行 `00_download_custom.py` -> `00_audit_data.py` (產出新清單)。
+2.  **[Step 1] 建立基準:** 執行 `05_backtest_benchmarks.py` (V5.1/V5.2)。
+3.  **[Step 2] 開發 V5.3:** 修改 `risk_manager.py` (L4) 與 `backtesting_utils.py`。
+4.  **[Step 3] 最終回測:** 執行 `06_backtest_v5.3.py` (含所有剝離場景)。
+
+---
+
+## **未來展望 (Future Work): V5.4 Track B 進階研究**
+
+**目標:** 引入付費與高解析度數據，解決「未知倖存者偏差」並優化執行細節。
+
+### **1. 更細顆粒度的 OHLCV (High-Frequency Data)**
+* **數據來源:** yfinance (近期) 或付費源。
+* **規格:** 5m 或 15m K線數據。
+* **目的:**
+    * **更精確的進出場:** 模擬盤中觸發 L4 止損的真實價格，而非僅依賴日線 Low/Close。
+    * **微結構特徵:** 計算日內 VPIN (Volume-Synchronized Probability of Informed Trading) 或買賣壓失衡，作為 L1 防禦的新因子。
+
+### **2. Track B (進階執行 - Paid / Sharadar or Polygon)**
+* **數據:** **Point-in-Time (PIT)** 歷史價格與基本面資料庫。
+    * **關鍵特性:** 包含**所有已下市股票 (Delisted Stocks)**，且數據對應到「當時」的發布狀態（無前視偏差）。
+* **偏差處理:** **全真法 (Reality Check)**。
+    * **動態股票池 (Dynamic Universe):** 建立 `get_historical_universe(date)` 函數，重建每一天歷史當下真實存在的股票清單，而非使用 2025 年的後見之明清單。
+* **目的:**
+    * **捕捉「未知的地雷股」:** 找出那些我們沒聽過、但在歷史上曾造成虧損的股票。
+    * **真實生存率驗證:** 驗證策略在真實歷史洪流（包含數千檔倒閉股）中的存活能力，確認 V5.3 的風控是否具有普適性。
