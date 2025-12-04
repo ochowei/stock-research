@@ -1,86 +1,83 @@
-這份計畫的核心精神是 **「動態攻防 (Dynamic Offense & Defense)」**。在 V5.2 確立了生存基石後，V5.3 旨在透過更精細的預測模型與動態出場，找回被過度風控犧牲掉的超額報酬。
-
----
-
-# **研究計畫：V5.3-Dynamic 智能攻防與動態出場系統**
+# **研究計畫：V5.3-Dynamic 智能攻防與動態出場系統 (Final Revised)**
 
 **Date:** 2025-12-04
-**Topics:** \#quant-trading \#machine-learning \#dynamic-exit \#supervised-learning
-**Status:** \#research \#draft
+**Based on:** V5.2 (Survival) & V5.1 (Lessons Learned)
+**Topics:** \#quant-trading \#hybrid-defense \#dynamic-exit \#ablation-study \#slippage-stress
+**Status:** \#execution-plan
 
 ## **1. 研究背景與核心目標 (Context & Objectives)**
 
-### **1.1 V5.2 復盤總結**
-V5.2 成功達成「生存優先」的目標，透過 ATR 控倉與市場寬度濾網，將最大回撤 (MaxDD) 控制在 -25% 左右。然而，剝離研究 (Ablation Study) 揭示了一個關鍵痛點：**「5 天時間止損 (Time Stop)」與「固定止盈」嚴重限制了獲利潛力**。在妖股反彈的主升段，過早離場導致策略錯失了肥尾 (Fat Tail) 利潤。
+### **1.1 V5.2 成功與侷限**
+V5.2 確立了「生存基石」，透過 ATR 控倉與市場寬度濾網，成功將回撤控制在 -25% 內。然而，**剝離研究 (Ablation Study)** 顯示，「5天時間止損」是績效的最大拖油瓶，截斷了妖股的主升段利潤。
 
-### **1.2 V5.3 核心目標：讓利潤奔跑 (Let Winners Run)**
-本階段目標是在維持 V5.2 風控水準的前提下，顯著提升 **Calmar Ratio (報酬/回撤比)**。
-我們將從「規則導向 (Rule-Based)」進化為「模型導向 (Model-Based)」與「動態導向 (Dynamic)」。
+### **1.2 V5.3 核心目標**
+在 **繼承 V5.2 所有風控底層** 的前提下，透過 **「混合防禦」** 與 **「動態追蹤」**，解決 V5.2 「太早賣」與「太晚跑」的問題。
 
-* **Primary Goal:** 移除時間止損，實作動態追蹤出場。
-* **Secondary Goal:** 升級 L1 防禦層為「預測型」模型，解決訊號滯後問題。
-* **Tertiary Goal:** 復活 L3 排序層，引入基本面數據以區分「錯殺」與「垃圾」。
+* **目標：** 顯著擊敗 V5.2 Merged Pool (Sharpe 0.87, Return 481%)。
+* **約束：** 在 Toxic Pool 壓力測試中，最大回撤不得超過 -30%。
 
-## **2. 系統架構升級 (Architecture Upgrades)**
+## **2. 系統架構：混合與動態 (Hybrid & Dynamic Architecture)**
 
-V5.3 將引入三個關鍵的新模組，形成完整的動態閉環：
+V5.3 不是全盤推翻，而是在 V5.2 的鋼骨上加裝動態感應器。
 
-### **2.1 L1 防禦層升級：監督式崩盤預警 (Supervised Crash Prediction)**
-* **痛點:** V5.2 的 HMM/市場寬度指標屬於「確認型」指標，往往在崩盤發生後才動作。
-* **解法:** 改用監督式學習 (XGBoost/LightGBM) 訓練預測模型。
-* **Target:** 預測未來 5-10 天 `SPY` 下跌 > 5% 或 `VIX` 飆升的機率。
-* **Features:** 宏觀特徵 (VIX Term Structure, Credit Spreads, Sector Rotation)。
+### **2.1 L1 防禦層：混合式崩盤預警 (Hybrid L1)**
+結合「模型的敏銳度」與「規則的剛性」。
 
-### **2.2 L3 排序層復活：基本面增強 (Fundamental-Enhanced Ranking)**
-* **痛點:** V5.1 的 L3 失敗是因為特徵與 L2 重疊。V5.2 證明「排序」有效，但僅依賴 RSI。
-* **解法:** 構建 Learning to Rank (LTR) 模型，引入 **正交特徵**。
-* **New Features:**
-    * **基本面 (Fundamentals):** P/S Ratio, Revenue Growth, Free Cash Flow (避免買到即將破產的公司)。
-    * **微結構 (Microstructure):** 買賣壓比率, 盤中波動率偏度。
+* **A. 預測模組 (XGBoost Classifier):**
+    * **Target:** 預測未來 10 日 `MaxDD > 5%` 或 `VIX > 30` 的機率。
+    * **Action:** 若風險機率高，**收緊** ATR 止損倍數 (e.g., 3.0x -> 1.5x) 並停止開新倉。
+* **B. 硬性熔斷 (Hard Liquidation - V5.2 Foundation):**
+    * **Rule:** 若 `Market Breadth (S&P 100 > SMA200)` < **15%**。
+    * **Action:** **強制市價清倉**。此規則具有**最高優先級 (Override)**，無視任何模型預測。這是對抗「模型失靈」的最後一道防線。
 
-### **2.3 L4 出場層新建：動態追蹤止盈 (ATR Trailing Stop)**
-* **痛點:** 固定 5 天出場截斷了動能。
-* **解法:** 實作路徑依賴型 (Path-Dependent) 出場機制。
-* **邏輯:**
-    * **初始止損:** Cost - 2 * ATR。
-    * **移動止盈:** 當價格上漲，止盈線隨之移動至 `High_max - 3 * ATR`。
-    * **狀態加權:** 若 L1 預測風險升高，自動收緊 ATR 倍數 (例如 3x -> 1.5x)。
+### **2.2 L3 排序層：基本面增強 (Fundamental-Enhanced Ranking)**
+* **特徵工程:** 引入 P/S Ratio, Revenue Growth (QoQ)。
+* **頻率對齊 (Frequency Check):** 必須計算基本面因子與短線回報的 IC 值。若 IC 不顯著，則回退至 V5.2 的純 RSI 排序，避免引入雜訊。
 
-## **3. 數據工程需求 (Data Engineering)**
+### **2.3 L4 出場層：動態追蹤止盈 (ATR Trailing Stop)**
+取代固定的 5 天持有期。
 
-為了支援上述模型，需擴充數據源：
+* **機制:** `Stop_Price = Highest_High - (K * ATR)`。
+* **動態 K 值:** 由 L1 模型決定。市場安全時 $K=3$ (放寬讓利潤跑)，市場危險時 $K=1.5$ (快速鎖利)。
+* **滑價懲罰分級 (Slippage Penalty Grading):**
+    * **Entry (Limit Order):** 設為 **5bps** (與 V5.2 相同)。
+    * **Trailing Exit (Stop Market Order):** 設為 **10bps**。因為動態止損通常觸發於價格快速下跌時，滑價成本必然高於限價單。
 
-1.  **基本面數據 (Fundamental Data):**
-    * 來源: yfinance (Quarterly Financials) 或外部 API。
-    * 頻率: 季資料，需進行前視偏差 (Look-ahead Bias) 處理 (例如：財報公告日後才可使用)。
-2.  **盤中/高頻特徵 (Intraday Features):**
-    * 來源: yfinance (60m data)。
-    * 用途: 計算更精細的波動率與進場點。
+### **2.4 底層風控 (Risk Foundation - Inherited)**
+* **Position Cap:** 單一標的權重上限 (20%)。防止基本面數據錯誤 (如市值計算錯誤) 導致 ATR Sizing 失控。
+* **ATR Sizing:** 維持 V5.2 的波動率倒數加權邏輯。
 
-## **4. 執行階段規劃 (Execution Phases)**
+## **3. 執行階段規劃 (Execution Phases)**
 
-### **階段一：出場機制改革 (Exit Revolution)**
-* **任務:** 修改 `backtesting_utils.py`，移除 `Hold 5 Days` 邏輯，實作 `TrailingStop` 類別。
-* **驗證:** 使用 V5.2 的進場訊號，僅替換出場邏輯，對比 Normal/Toxic Pool 的績效差異。
-* **預期:** 大幅提升 Total Return，MaxDD 可能微幅增加但可控。
+* **Phase 1: 數據與基礎設施** (繼承 `data_loader`, 擴充基本面數據)。
+* **Phase 2: 模型開發** (訓練 L1 XGBoost 崩盤預警, L3 Learning-to-Rank)。
+* **Phase 3: 機制實作** (修改 `backtesting_utils` 支援 Trailing Stop 與 分級滑價)。
+* **Phase 4: 驗證與剝離研究** (執行下列關鍵驗證協議)。
 
-### **階段二：L1 預測模型開發 (Predictive L1)**
-* **任務:** 建立 `03_train_crash_predictor.py`。
-* **方法:** 標註歷史崩盤區間 (Labeling)，訓練 XGBoost 分類器。
-* **驗證:** 比較新模型與 V5.2 市場寬度濾網的 `F1-Score` 與 `Lead Time` (領先天數)。
+## **4. 驗證協議：剝離研究 (Ablation Study)**
 
-### **階段三：L3 基本面因子整合 (Fundamental L3)**
-* **任務:** 擴充 `00_download` 與 `02_features`，納入財報數據。
-* **方法:** 訓練新的 Ranker 模型，目標是在 RSI<10 的股票中，排序出反彈機率最高的標的。
-* **驗證:** 觀察 Top 5 選股的勝率與盈虧比是否顯著優於隨機 RSI 排序。
+為了證明 V5.3 的複雜度是值得的，必須執行以下 **「減法測試」**。基準 (Baseline) 為 **V5.3 Full System**。
 
-### **階段四：全系統整合回測 (Integration)**
-* **任務:** 串聯 L1(預測) -> L2(篩選) -> L3(排序) -> Risk(控倉) -> L4(動態出場)。
-* **雙軌驗證:** 再次執行 Custom vs. Index 雙軌回測與毒性壓力測試。
+我們將測試分為三組：**動態效益驗證**、**防禦底層驗證**、**成本壓力驗證**。
+
+| 測試組別 | 測試場景 (Scenario) | 移除/修改組件 | 測試目的 (Hypothesis to Validate) |
+| :--- | :--- | :--- | :--- |
+| **A. 動態效益** | **No Trailing Stop** | 回退至 **固定 5 天出場** | 證明 L4 動態出場真的能抓到肥尾利潤 (Fat Tail)，而不僅是增加交易次數。 |
+| | **No Predictive Defense** | 回退至 **純 V5.2 寬度濾網** | 證明 L1 模型能比硬性規則「更早」偵測風險，減少回撤幅度。 |
+| | **No Fundamental Sort** | 回退至 **純 RSI 排序** | 證明加入基本面數據能提升選股勝率 (Win Rate)，而非僅是噪聲。 |
+| **B. 防禦底層** | **No Hard Liquidation** | 移除 **強制清倉** (僅靠模型) | **(關鍵)** 證明當模型預測失敗 (False Negative) 時，V5.2 的硬性規則是救命稻草。 |
+| | **No Position Cap** | 移除 **20% 上限** | 測試在基本面數據異常時，ATR Sizing 是否會導致單一標的過度曝險。 |
+| **C. 成本壓力** | **No Slippage Penalty** | 全程使用 **統一 5bps** | **(真實性檢查)** 移除對 Stop Order 的 10bps 懲罰。若此場景績效遠高於 Baseline，代表策略利潤可能被滑價吃光，需重新評估可行性。 |
 
 ## **5. 成功指標 (Success Metrics)**
 
-* **Calmar Ratio:** > 2.0 (年化報酬 / 最大回撤)。
-* **Recovery Factor:** > 5.0 (總獲利 / 最大回撤絕對值)。
-* **Win Rate:** 維持 > 55% (雖然動態出場主要提升的是盈虧比，但勝率不應大幅下降)。
-* **Toxicity Resistance:** 在 Toxic Pool 中不發生本金歸零 (Ruin)。
+| 指標 | V5.2 Merged (基準) | V5.3 目標 |
+| :--- | :--- | :--- |
+| **Total Return** | 481% | **> 600%** (由 L4 貢獻) |
+| **Max Drawdown** | -25.8% | **< -25%** (由 L1 貢獻) |
+| **Sharpe Ratio** | 0.87 | **> 1.0** |
+| **Ablation Validity** | N/A | 所有剝離場景的績效皆應 **低於** Full System (代表每個組件都有貢獻)。 |
+
+---
+**結語:**
+V5.3 是一次「防守反擊」的升級。我們在 V5.2 的 **防禦底層 (Liquidation, Position Cap)** 之上，疊加了 **滑價分級** 的現實考驗，確保策略不僅在理論上可行，在包含交易摩擦的真實市場中依然具備超額獲利能力。
