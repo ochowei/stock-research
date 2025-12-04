@@ -1,24 +1,24 @@
-# **研究計畫：V5.3-Dynamic (Track A) 數據檢核與動態攻防系統 (Final Revised v3)**
+# **研究計畫：V5.3-Dynamic (Track A) 數據檢核與動態攻防系統 (Final Revised v4)**
 
 **Date:** 2025-12-04
 **Focus:** 🟢 **Free Data Only (yfinance)**
-**Goal:** 在免費數據限制下，確保數據品質，並驗證動態風控是否優於「固定持有」與「死抱」。
+**Constraint:** 🇹🇼 **Taiwan Timezone Operator (No Intraday Monitoring)**
+**Goal:** 在免費數據與「隔夜操作」限制下，驗證動態風控的有效性。
 
 ## **階段一：數據審計與基準重現 (Data Audit & Baselining)**
 
 **目標：** 在開發新功能前，先確保數據品質，並建立清洗後的標準測試集。
 
 ### **1.1 工作項目：數據覆蓋率分析與清洗 (Data Sufficiency Analysis & Cleaning)**
-* **問題：** 繼承自 V5.2 的 `asset_pool.json` 與 `toxic_asset_pool.json` 是靜態清單，可能包含大量在早期年份（如 2015-2018）尚未上市或流動性不足的標的。
 * **執行動作 (撰寫 `00_audit_data.py`):**
     1.  **備份原始清單：** 將 V5.2 的原始檔案重新命名為 `origin_asset_pool.json` 與 `origin_toxic_asset_pool.json`。
     2.  **數據審計：** 計算每檔標的在 2015-2025 間的「有效交易日」比例與成交量密度。
     3.  **清洗與生成：** 生成經過清洗的 **新版** `asset_pool.json` 與 `toxic_asset_pool.json`。
-    4.  **產出報告：** 生成 `data_selection_report.md`，描述篩選邏輯與被剔除的標的。
-    5.  **覆蓋率視覺化：** 產出 `data_coverage_over_time.png`，確認各年份有效標的數量（目標 > 30 檔）。
+    4.  **產出報告：** 生成 `data_selection_report.md`。
+    5.  **覆蓋率視覺化：** 產出 `data_coverage_over_time.png`。
 
 ### **1.2 工作項目：基準線重現 (Benchmark Re-implementation)**
-* **目標：** 使用 **清洗後的新版清單** 跑出 V5.1 與 V5.2 的成績單作為對照。
+* **目標：** 使用 **清洗後的新版清單** 跑出 V5.1 與 V5.2 的成績單。
 * **執行動作:**
     * **Benchmark A (V5.1 Aggressive):** 邏輯: `Fixed 5-Day` + `No Filter` + `Equal Weight`。
     * **Benchmark B (V5.2 Risk-Aware):** 邏輯: `Fixed 5-Day` + `Breadth Filter` + `ATR Sizing` (即 V5.2 Full System)。
@@ -28,25 +28,38 @@
 
 ## **階段二：核心系統實作 (Core Implementation - Track A)**
 
-### **2.1 L4 出場層：動態追蹤止盈 (ATR Trailing Stop)**
+### **2.1 實盤操作限制 (Operational Constraints - 🇹🇼 Taiwan User)**
+* **情境:** 操作者位於台灣，使用 Firstrade，無法在美股盤中盯盤。
+* **流程限制 (Workflow):**
+    1.  **T-1 日收盤後 (台灣時間早晨):** 下載截至 `T-1` 的數據。
+    2.  **離線計算:** 計算 L1 風險狀態、L2 訊號、L4 止損價格。
+    3.  **T 日開盤前 (台灣時間晚上):** 預掛 `T` 日的訂單。
+        * **進場單:** 市價單 (Market Order) -> 預期在 `T_Open` 成交。
+        * **出場單:** 停損市價單 (Stop Market Order) -> 觸發價為固定值 (基於 `T-1` 數據計算)。
+* **回測嚴格要求:**
+    * 禁止使用 `T` 日的 `High/Low/Close` 來決定是否在 `T` 日「進場」。
+    * `T` 日的出場僅能由「預掛的停損單」觸發 (即 `T_Low < Stop_Price`)，或持有期滿的 `T_Open` 出場。
+
+### **2.2 L4 出場層：隔日更新動態止盈 (Daily-Updated Trailing Stop)**
 * **機制:** 取代 V5.2 的固定 5 天出場。
-* **邏輯:**
-    * $Stop = Entry - (3.0 \times ATR)$
-    * $New\_Stop = Highest\_High - (K \times ATR)$
-    * **動態 K:** 當 `RSI > 70` 或 `L1 Risk = High` 時，緊縮至 $K=1.5$。
+* **邏輯 (配合實盤限制):**
+    * 止損價 ($Stop\_Price_T$) 必須在 `T` 日開盤前決定。
+    * $Stop\_Price_T = Highest\_High_{(Entry \to T-1)} - (K \times ATR_{T-1})$
+    * **意義:** 我們只能根據「昨天為止」的最高價來設今天的防守點。如果今天 (`T`) 股價大漲創新高，止損點**不會**在盤中跟著上移，必須等到明天 (`T+1`) 才能更新。
+* **動態 K:** 當 `RSI(T-1) > 70` 或 `L1_Risk(T-1) = High` 時，緊縮至 $K=1.5$。
 
-### **2.2 交易成本模型 (Transaction Cost Model - Updated)**
-* **券商假設:** **Firstrade / IBKR Lite (Zero Commission)**。
+### **2.3 交易成本模型 (Transaction Cost Model)**
+* **券商假設:** **Firstrade (Zero Commission)**。
 * **參數設定:**
-    * **Commission (佣金):** **0 bps** (因 Firstrade 免佣)。
-    * **Regulatory Fees (規費):** **1 bps** (預留給 SEC/TAF 賣出規費)。
+    * **Commission:** **0 bps**。
+    * **Regulatory Fees:** **1 bps** (賣出規費)。
     * **Slippage (滑價):**
-        * **Entry (Limit Order):** **5 bps** (假設掛限價單，但考慮未能成交的機會成本或微幅滑動)。
-        * **Trailing Exit (Stop Market):** **10 bps** (模擬觸發止損時，市價單造成的較大滑價)。
+        * **Entry (Market on Open):** **5 bps** (開盤市價單滑價)。
+        * **Trailing Exit (Stop Market):** **10 bps** (觸發停損時的滑價)。
 
-### **2.3 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
-* **A. 硬性熔斷:** `Breadth < 15%` -> 強制清倉。
-* **B. 預測模組 (Price Action XGBoost):** 預測短期波動風險，僅調整 L4 參數，不強制清倉。
+### **2.4 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
+* **A. 硬性熔斷:** `Breadth(T-1) < 15%` -> 強制在 `T_Open` 清倉。
+* **B. 預測模組:** 根據 `T-1` 的 VIX 與價格行為預測風險，調整 L4 參數。
 
 ---
 
@@ -55,10 +68,11 @@
 ### **3.1 剝離研究 (Ablation Study)**
 在同一份數據池 (清洗後的 Normal + Toxic) 上，比較以下場景：
 
-1.  **V5.3 (Full):** L1 混合防禦 + L4 動態出場。
-2.  **V5.3 (No L1):** 僅 L4 動態出場 (測試 L4 自身的獲利能力)。
-3.  **V5.3 (No Stop / 死抱):** **(新增)** 關閉 L4 動態止盈與時間止損，持有直到觸發 L1 熔斷或 RSI > 90 極端訊號。驗證 L4 的 Trailing Stop 是否比「死抱」更優秀。
-4.  **V5.2 (Benchmark):** 固定 5 天 + 硬性熔斷 (測試 V5.3 是否超越前代)。
+1.  **V5.3 (Full):** L1 混合防禦 + L4 動態出場 (隔日更新)。
+2.  **V5.3 (No L1):** 僅 L4 動態出場。
+3.  **V5.3 (No Stop / 死抱):** 關閉 L4 與時間止損，持有直到觸發 L1 熔斷或 RSI 極端訊號。
+    * *目的:* 驗證在「無法盤中移動止損」的劣勢下，L4 是否仍優於死抱。
+4.  **V5.2 (Benchmark):** 固定 5 天 + 硬性熔斷。
 
 ### **3.2 毒性生存測試 (Survivorship Stress Test)**
 * 專注觀察 **清洗後新版** `toxic_asset_pool.json` 中的標的。
@@ -70,7 +84,9 @@
 
 1.  **[Step 0] 數據清洗:** 執行 `00_download_custom.py` -> `00_audit_data.py` (產出新清單)。
 2.  **[Step 1] 建立基準:** 執行 `05_backtest_benchmarks.py` (V5.1/V5.2)。
-3.  **[Step 2] 開發 V5.3:** 修改 `risk_manager.py` (L4) 與 `backtesting_utils.py` (整合新的成本模型)。
+3.  **[Step 2] 開發 V5.3:**
+    * 修改 `risk_manager.py`: 實作 `update_trailing_stop(T-1_High, ATR)`。
+    * 修改 `backtesting_utils.py`: 實作 **T-1 決策 / T Open 執行** 的嚴格時序邏輯。
 4.  **[Step 3] 最終回測:** 執行 `06_backtest_v5.3.py` (含所有剝離場景)。
 
 ---
@@ -80,17 +96,11 @@
 **目標:** 引入付費與高解析度數據，解決「未知倖存者偏差」並優化執行細節。
 
 ### **1. 更細顆粒度的 OHLCV (High-Frequency Data)**
-* **數據來源:** yfinance (近期) 或付費源。
-* **規格:** 5m 或 15m K線數據。
-* **目的:**
-    * **更精確的進出場:** 模擬盤中觸發 L4 止損的真實價格，而非僅依賴日線 Low/Close。
-    * **微結構特徵:** 計算日內 VPIN (Volume-Synchronized Probability of Informed Trading) 或買賣壓失衡，作為 L1 防禦的新因子。
+* **數據來源:** yfinance (近期) 或付費源 (5m/15m)。
+* **目的:** 模擬盤中觸發 L4 止損的真實價格。
 
 ### **2. Track B (進階執行 - Paid / Sharadar or Polygon)**
-* **數據:** **Point-in-Time (PIT)** 歷史價格與基本面資料庫。
-    * **關鍵特性:** 包含**所有已下市股票 (Delisted Stocks)**，且數據對應到「當時」的發布狀態（無前視偏差）。
+* **數據:** **Point-in-Time (PIT)** 歷史價格與基本面資料庫 (含已下市股票)。
 * **偏差處理:** **全真法 (Reality Check)**。
-    * **動態股票池 (Dynamic Universe):** 建立 `get_historical_universe(date)` 函數，重建每一天歷史當下真實存在的股票清單，而非使用 2025 年的後見之明清單。
-* **目的:**
-    * **捕捉「未知的地雷股」:** 找出那些我們沒聽過、但在歷史上曾造成虧損的股票。
-    * **真實生存率驗證:** 驗證策略在真實歷史洪流（包含數千檔倒閉股）中的存活能力，確認 V5.3 的風控是否具有普適性。
+    * **動態股票池 (Dynamic Universe):** 重建每一天歷史當下真實存在的股票清單。
+* **目的:** 捕捉「未知的地雷股」，驗證策略在真實歷史洪流中的生存率。
