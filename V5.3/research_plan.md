@@ -1,4 +1,4 @@
-# **研究計畫：V5.3-Dynamic (Track A) 數據檢核與動態攻防系統 (Final Revised v2)**
+# **研究計畫：V5.3-Dynamic (Track A) 數據檢核與動態攻防系統 (Final Revised v3)**
 
 **Date:** 2025-12-04
 **Focus:** 🟢 **Free Data Only (yfinance)**
@@ -34,9 +34,17 @@
     * $Stop = Entry - (3.0 \times ATR)$
     * $New\_Stop = Highest\_High - (K \times ATR)$
     * **動態 K:** 當 `RSI > 70` 或 `L1 Risk = High` 時，緊縮至 $K=1.5$。
-* **滑價:** Entry 5bps / Exit **10bps** (模擬市價停損滑價)。
 
-### **2.2 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
+### **2.2 交易成本模型 (Transaction Cost Model - Updated)**
+* **券商假設:** **Firstrade / IBKR Lite (Zero Commission)**。
+* **參數設定:**
+    * **Commission (佣金):** **0 bps** (因 Firstrade 免佣)。
+    * **Regulatory Fees (規費):** **1 bps** (預留給 SEC/TAF 賣出規費)。
+    * **Slippage (滑價):**
+        * **Entry (Limit Order):** **5 bps** (假設掛限價單，但考慮未能成交的機會成本或微幅滑動)。
+        * **Trailing Exit (Stop Market):** **10 bps** (模擬觸發止損時，市價單造成的較大滑價)。
+
+### **2.3 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
 * **A. 硬性熔斷:** `Breadth < 15%` -> 強制清倉。
 * **B. 預測模組 (Price Action XGBoost):** 預測短期波動風險，僅調整 L4 參數，不強制清倉。
 
@@ -62,7 +70,7 @@
 
 1.  **[Step 0] 數據清洗:** 執行 `00_download_custom.py` -> `00_audit_data.py` (產出新清單)。
 2.  **[Step 1] 建立基準:** 執行 `05_backtest_benchmarks.py` (V5.1/V5.2)。
-3.  **[Step 2] 開發 V5.3:** 修改 `risk_manager.py` (L4) 與 `backtesting_utils.py`。
+3.  **[Step 2] 開發 V5.3:** 修改 `risk_manager.py` (L4) 與 `backtesting_utils.py` (整合新的成本模型)。
 4.  **[Step 3] 最終回測:** 執行 `06_backtest_v5.3.py` (含所有剝離場景)。
 
 ---
