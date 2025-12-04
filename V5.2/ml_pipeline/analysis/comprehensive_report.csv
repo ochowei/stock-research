@@ -1,0 +1,5 @@
+Strategy,Total Return,CAGR,Sharpe,MaxDD,Final Equity
+V5.2 Custom (Risk-Aware),391.52%,15.72%,0.80,-25.90%,"$491,522"
+V5.2 Index (Stress Test),179.11%,9.87%,0.56,-24.45%,"$279,105"
+V5.1 Strategy (Aggressive),796.42%,22.28%,1.08,-12.27%,"$896,418"
+Buy & Hold (SPY),297.26%,13.48%,0.80,-33.72%,"$397,256"
