@@ -15,7 +15,12 @@ def run_backtest(
     transaction_cost_bps=5,
     hold_days=5,
     use_regime_filter=True, # [New] 開關 L1 防禦
-    force_equal_weight=False # [New] 強制等權重 (V5.1 模式)
+    force_equal_weight=False, # [New] 強制等權重 (V5.1 模式)
+    # --- 新增開關 (預設值必須為 True 以維持現狀) ---
+    use_time_stop=True,
+    use_position_cap=True,
+    use_signal_sorting=True,
+    use_liquidation=True
 ):
     """
     Runs a backtest with Liquidation, Time-Stop, and Sorted Entries.
@@ -74,13 +79,15 @@ def run_backtest(
         # [Defense Upgrade] 緊急清倉機制
         # 如果 use_regime_filter 為 False，則忽略 Crash 訊號
         is_crash = (current_regime == 2) and use_regime_filter
-        
-        if is_crash:
+
+        # [Liquidation 修改] 確保只有在「偵測到崩盤」且「濾網開啟」且「清倉開關開啟」時才清倉
+        if is_crash and use_liquidation:
             symbols_to_exit = list(positions.keys())
         else:
             for symbol, pos_data in positions.items():
                 should_sell = False
-                if pos_data['days_held'] >= hold_days:
+                # [Time Stop 修改] 加入開關判斷
+                if use_time_stop and pos_data['days_held'] >= hold_days:
                     should_sell = True
                 if not should_sell and symbol in daily_data['symbol'].values:
                     row = daily_data[daily_data['symbol'] == symbol]
@@ -110,8 +117,13 @@ def run_backtest(
         if can_enter:
             entry_signals = daily_data[daily_data['entry_signal']]
             if not entry_signals.empty:
-                entry_signals = entry_signals.sort_values(by='prev_RSI_2', ascending=True)
-
+                # [Entry Sorting 修改] 加入開關判斷
+                if use_signal_sorting:
+                    entry_signals = entry_signals.sort_values(by='prev_RSI_2', ascending=True)
+                else:
+                    # 若關閉排序，建議隨機打散以模擬「無特定偏好」
+                    entry_signals = entry_signals.sample(frac=1, random_state=42)
+                
                 for _, row in entry_signals.iterrows():
                     symbol = row['symbol']
                     if symbol in positions: continue
