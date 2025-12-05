@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import json
+import shutil
 import matplotlib.pyplot as plt
 from data_loader import DataLoader
 
@@ -79,40 +80,24 @@ def audit_ticker(df, ticker, start_year=2015, end_year=2025):
 
     return {'valid': True, 'reason': 'Pass', 'days': total_valid_days}
 
-def main():
-    print("=== V5.3 Step 1.1: Data Audit & Cleaning (Fixed) ===")
-    script_dir = get_script_dir()
-    loader = DataLoader(script_dir)
-    
-    # 1. 載入全量數據
-    parquet_path = os.path.join(script_dir, 'data', 'custom', 'universe_daily.parquet')
-    print(f"Loading data from {parquet_path}...")
-    
-    if not os.path.exists(parquet_path):
-        print("Error: universe_daily.parquet not found. Run 01_format_data.py first.")
-        return
-    
-    # [Fix] 讀取後立即 reset_index，將 MultiIndex (timestamp, symbol) 轉為 columns
-    universe_df = pd.read_parquet(parquet_path).reset_index()
-    print(f"Data Loaded. Shape: {universe_df.shape}")
-    print(f"Columns: {universe_df.columns.tolist()}")
-
-    # 2. 讀取原始清單 (Normal + Toxic)
-    # V5.3 的 data_loader 會讀取當前目錄的 json，若還沒生成，我們可以先讀取 V5.2 的原始來源
-    # 為了方便，我們直接讀取 V5.2/ml_pipeline/asset_pool.json 或 toxic_asset_pool.json
-    # 或是依賴 DataLoader 的邏輯 (假設已將 V5.2 json 複製過來)
+def audit_and_save_pool(universe_df, script_dir, loader_func, output_filename, pool_name):
+    """通用函數：審計特定資產池並儲存結果"""
+    print(f"\n--- Auditing {pool_name} Pool ---")
     
     try:
-        raw_assets = loader.get_all_tickers()
+        raw_assets = loader_func()
+        if not raw_assets:
+            print(f"Warning: {pool_name} pool is empty or not found. Skipping.")
+            return [], 0, 0
     except Exception as e:
-        print(f"Loader error: {e}. Fallback to unique symbols in parquet.")
-        raw_assets = universe_df['symbol'].unique().tolist()
+        print(f"Error loading {pool_name} pool: {e}. Skipping.")
+        return [], 0, 0
 
-    print(f"Auditing {len(raw_assets)} tickers...")
+    print(f"Auditing {len(raw_assets)} tickers from {output_filename}...")
 
     cleaned_pool = []
     audit_results = []
-    
+
     for ticker in raw_assets:
         res = audit_ticker(universe_df, ticker)
         res['ticker'] = ticker
@@ -123,30 +108,91 @@ def main():
         else:
             print(f"  [Reject] {ticker}: {res['reason']} (Days: {res['days']})")
 
-    # 3. 存檔
-    output_path = os.path.join(script_dir, 'asset_pool.json')
+    # 存檔
+    output_path = os.path.join(script_dir, output_filename)
     
-    # 備份舊檔
     if os.path.exists(output_path):
-        backup_path = os.path.join(script_dir, 'asset_pool_backup.json')
-        import shutil
+        backup_path = os.path.join(script_dir, f"{output_filename}.bak")
         shutil.copy(output_path, backup_path)
         
     with open(output_path, 'w') as f:
-        json.dump(cleaned_pool, f, indent=2)
+        # 讀取原始 json (包含交易所前綴) 以保留格式
+        original_json_path = output_path.replace('.json', '.json').replace('_cleaned', '') # Robust way to find original
+        if not os.path.exists(original_json_path): original_json_path = output_path
         
-    print(f"\nAudit Complete.")
+        try:
+            with open(original_json_path, 'r') as fr:
+                original_data = json.load(fr)
+
+            # 建立一個 map (cleaned_ticker -> original_format)
+            original_map = {t.split(':')[-1].replace('.', '-'): t for t in original_data}
+
+            # 依據清理後的 ticker list，寫回原始格式
+            final_list = [original_map[t] for t in cleaned_pool if t in original_map]
+            json.dump(final_list, f, indent=2)
+        except Exception:
+            # Fallback
+            json.dump(cleaned_pool, f, indent=2)
+
+    print(f"\n{pool_name} Audit Complete.")
     print(f"Original: {len(raw_assets)}")
     print(f"Cleaned : {len(cleaned_pool)}")
     print(f"Removed : {len(raw_assets) - len(cleaned_pool)}")
-    print(f"New asset_pool.json saved to {output_path}")
+    print(f"Cleaned pool saved to {output_path}")
     
-    # 產出報告
-    report_df = pd.DataFrame(audit_results)
-    report_path = os.path.join(script_dir, 'analysis', 'data_audit_report.csv')
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    report_df.to_csv(report_path, index=False)
-    print(f"Detailed report saved to {report_path}")
+    # Return the detailed results for report generation
+    return audit_results, len(raw_assets), len(cleaned_pool)
+
+
+def main():
+    print("=== V5.3 Step 1.1: Dual-Track Data Audit & Cleaning ===")
+    script_dir = get_script_dir()
+
+    # --- 1. 載入全量數據 ---
+    parquet_path = os.path.join(script_dir, 'data', 'custom', 'universe_daily.parquet')
+    print(f"Loading data from {parquet_path}...")
+
+    if not os.path.exists(parquet_path):
+        print("Error: universe_daily.parquet not found. Run 01_format_data.py first.")
+        return
+
+    universe_df = pd.read_parquet(parquet_path).reset_index()
+    print(f"Data Loaded. Shape: {universe_df.shape}")
+
+    # --- 2. 審計 Group B (Cleaned / Target) ---
+    loader_group_b = DataLoader(script_dir,
+                                normal_file='asset_pool.json',
+                                toxic_file='toxic_asset_pool.json')
+
+    all_audit_results = []
+
+    # 審計 Normal Pool
+    results_normal, _, _ = audit_and_save_pool(universe_df, script_dir,
+                                                 loader_group_b.get_normal_tickers,
+                                                 'asset_pool.json',
+                                                 'Normal (Group B)')
+    for r in results_normal: r['pool'] = 'Normal'
+    all_audit_results.extend(results_normal)
+
+    # 審計 Toxic Pool
+    results_toxic, _, _ = audit_and_save_pool(universe_df, script_dir,
+                                                loader_group_b.get_toxic_tickers,
+                                                'toxic_asset_pool.json',
+                                                'Toxic (Group B)')
+    for r in results_toxic: r['pool'] = 'Toxic'
+    all_audit_results.extend(results_toxic)
+
+    # --- 3. 產出合併報告 ---
+    if all_audit_results:
+        report_df = pd.DataFrame(all_audit_results)
+        report_path = os.path.join(script_dir, 'analysis', 'data_audit_report.csv')
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+        report_df.to_csv(report_path, index=False)
+        print(f"\nDetailed audit report for Group B saved to {report_path}")
+
+    print("\n--- Audit Summary ---")
+    print("Group A (origin_*.json) files remain untouched.")
+    print("Group B (*.json) files have been audited and overwritten.")
 
 if __name__ == "__main__":
     main()

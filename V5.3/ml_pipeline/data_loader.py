@@ -3,34 +3,34 @@ import os
 
 class DataLoader:
     """
-    V5.2 資料載入器 (Data Loader)
-    負責管理與讀取資產清單，支援切換「自選池」與「毒性池」。
+    V5.3 資料載入器 (Data Loader) - Refactored for Dual-Track
+    負責管理與讀取資產清單，支援動態指定檔案來源。
     """
-    def __init__(self, base_dir=None):
+    def __init__(self, base_dir=None, normal_file='asset_pool.json', toxic_file='toxic_asset_pool.json'):
         # 若未指定目錄，預設為此腳本所在目錄 (ml_pipeline)
         if base_dir is None:
             self.base_dir = os.path.dirname(os.path.abspath(__file__))
         else:
             self.base_dir = base_dir
             
-        # 定義檔案路徑
-        self.normal_pool_path = os.path.join(self.base_dir, 'asset_pool.json')
-        self.toxic_pool_path = os.path.join(self.base_dir, 'toxic_asset_pool.json')
+        # 動態定義檔案路徑
+        self.normal_pool_path = os.path.join(self.base_dir, normal_file)
+        self.toxic_pool_path = os.path.join(self.base_dir, toxic_file)
 
     def get_normal_tickers(self):
-        """讀取標準自選股清單 (asset_pool.json)"""
+        """讀取標準自選股清單"""
         print(f"[DataLoader] Loading Normal Pool from {os.path.basename(self.normal_pool_path)}...")
         return self._load_and_clean(self.normal_pool_path)
 
     def get_toxic_tickers(self):
-        """讀取毒性壓力測試清單 (toxic_asset_pool.json)"""
+        """讀取毒性壓力測試清單"""
         print(f"[DataLoader] Loading Toxic Pool from {os.path.basename(self.toxic_pool_path)}...")
         return self._load_and_clean(self.toxic_pool_path)
     
     def get_all_tickers(self):
         """讀取並合併所有清單 (用於一次性下載所有數據)"""
-        normal = self._load_and_clean(self.normal_pool_path)
-        toxic = self._load_and_clean(self.toxic_pool_path)
+        normal = self.get_normal_tickers()
+        toxic = self.get_toxic_tickers()
         combined = sorted(list(set(normal + toxic)))
         print(f"[DataLoader] Loaded Combined Pool: {len(combined)} tickers.")
         return combined
