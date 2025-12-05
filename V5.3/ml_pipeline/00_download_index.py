@@ -54,12 +54,11 @@ def main():
     START_DATE = '2015-01-01'
     END_DATE = '2025-11-30'
 
-    # Build paths relative to the script's location to get to V5.2 root
+    # Build paths relative to the script's location
     script_dir = get_script_dir()
-    v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
-    # Output directories and files (in V5.2/data/)
-    output_dir = os.path.join(v5_2_dir, 'data', 'index')
+    # Output directories and files (in ./data/)
+    output_dir = os.path.join(script_dir, 'data', 'index')
     tickers_output_path = os.path.join(output_dir, 'raw_tickers.pkl')
     macro_output_path = os.path.join(output_dir, 'raw_macro.pkl')
 

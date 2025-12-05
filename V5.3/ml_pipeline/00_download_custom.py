@@ -31,7 +31,6 @@ def main():
     DOWNLOAD_MODE = 'MERGED' 
 
     script_dir = get_script_dir()
-    v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
     
     # [New] 初始化 DataLoader
     loader = DataLoader(script_dir)
@@ -48,7 +47,7 @@ def main():
         print(f"--- Mode: MERGED ({len(target_tickers)} tickers) ---")
 
     # Output paths (維持存入 data/custom，讓後續腳本無縫接軌)
-    output_dir = os.path.join(v5_2_dir, 'data', 'custom')
+    output_dir = os.path.join(script_dir, 'data', 'custom')
     tickers_output_path = os.path.join(output_dir, 'raw_tickers.pkl')
     macro_output_path = os.path.join(output_dir, 'raw_macro.pkl')
     os.makedirs(output_dir, exist_ok=True)

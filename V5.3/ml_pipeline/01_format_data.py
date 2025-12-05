@@ -50,15 +50,14 @@ def main():
     converting .pkl files to sorted, numeric .parquet files.
     """
     script_dir = get_script_dir()
-    v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
     data_tracks = ['custom', 'index']
 
     for track in data_tracks:
         print(f"--- Processing data for track: {track} ---")
 
-        # Define paths relative to V5.2 root
-        base_data_dir = os.path.join(v5_2_dir, 'data', track)
+        # Define paths relative to the script's location
+        base_data_dir = os.path.join(script_dir, 'data', track)
         raw_tickers_path = os.path.join(base_data_dir, 'raw_tickers.pkl')
         raw_macro_path = os.path.join(base_data_dir, 'raw_macro.pkl')
 
