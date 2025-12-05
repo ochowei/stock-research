@@ -56,10 +56,9 @@ def main():
     and calculates market breadth from the 'index' track.
     """
     script_dir = get_script_dir()
-    v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
-    data_dir = os.path.join(v5_2_dir, 'data')
-    features_dir = os.path.join(v5_2_dir, 'features')
+    data_dir = os.path.join(script_dir, 'data')
+    features_dir = os.path.join(script_dir, 'features')
     os.makedirs(features_dir, exist_ok=True)
 
     stock_features_output_path = os.path.join(features_dir, 'stock_features.parquet')

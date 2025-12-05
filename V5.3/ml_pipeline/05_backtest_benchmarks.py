@@ -38,9 +38,9 @@ def calculate_metrics(curve):
 
 # --- 輔助函數：載入 V5 格式數據 ---
 def load_data(base_dir):
-    features_path = os.path.join(base_dir, '..', 'features', 'stock_features.parquet')
-    regime_path = os.path.join(base_dir, '..', 'signals', 'regime_signals.parquet')
-    
+    features_path = os.path.join(base_dir, 'features', 'stock_features.parquet')
+    regime_path = os.path.join(base_dir, 'signals', 'regime_signals.parquet')
+
     try:
         print(f"Loading features from {features_path}...")
         features_df = pd.read_parquet(features_path)
@@ -48,7 +48,7 @@ def load_data(base_dir):
         regime_signals_df = pd.read_parquet(regime_path)
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
-        print("Hint: Ensure you have copied 'features' and 'signals' folders from V5.2 to V5.3 root.")
+        print("Hint: Ensure you have run '02_build_features.py' and '03_build_regime_filter.py' first.")
         return None
 
     # 合併特徵與訊號
