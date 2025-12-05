@@ -40,11 +40,13 @@
     
 ---
 
-## **階段二：核心系統實作 (Core Implementation - Track A)**
+## **階段二：核心系統實作 (Core Implementation \- Expanded)**
 
+此階段將同步進行「交易機制」與「特徵工程」的升級。
 *(此階段所有數據皆來自 yfinance OHLCV，無需付費)*
 
-### **2.1 實盤操作限制 (Operational Constraints)**
+
+### **2.0 實盤操作限制 (Operational Constraints)**
 * **情境:** 操作者位於台灣，無法在美股盤中盯盤。
 * **流程:**
     1.  **T-1 收盤後:** 下載數據，計算訊號。
@@ -53,29 +55,49 @@
     * **進場:** T 日開盤市價單 (Market on Open)。
     * **出場:** T 日開盤前掛出 **停損市價單 (Stop Market Order)**，觸發價基於 T-1 數據固定（盤中不移動）。
 
-### **2.2 L4 出場層：隔日更新動態止盈 (Daily-Updated Trailing Stop)**
-* **機制:** 取代 V5.2 的固定 5 天出場。
-* **邏輯:**
-    * 止損價 ($Stop\_Price_T$) 必須在 `T` 日開盤前決定。
-    * $Stop\_Price_T = Highest\_High_{(Entry \to T-1)} - (K \times ATR_{T-1})$
-* **動態 K 值:**
-    * **預設:** $K=3.0$ (讓利潤奔跑)。
-    * **緊縮:** 當 `RSI(T-1) > 70` 或 `L1_Risk(T-1) = High` 時，緊縮至 $K=1.5$ (快速鎖利)。
+### **2.1 數據源擴充 (Data Expansion)**
 
-### **2.3 交易成本模型 (Transaction Cost Model)**
-* **券商假設:** **Firstrade / IBKR Lite (Zero Commission)**。
-* **參數設定:**
-    * **Commission (佣金):** **0 bps**。
-    * **Regulatory Fees (規費):** **1 bps** (預留給 SEC/TAF 賣出規費)。
-    * **Slippage (滑價):**
-        * **Entry (Market on Open):** **5 bps** (開盤市價單滑價)。
-        * **Trailing Exit (Stop Market):** **10 bps** (模擬觸發止損時，市價單造成的較大滑價)。
+* **修改 00\_download\_custom.py：**  
+  * 新增 **L1 替代性宏觀標的** 下載：  
+    * **HYG** (iShares iBoxx $ High Yield Corp Bond ETF)  
+    * **IEF** (iShares 7-10 Year Treasury Bond ETF)  
+  * *註：SPY 與 VIX 原本已有。*
 
-### **2.4 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
-* **A. 硬性熔斷:** `Breadth(T-1) < 15%` -> 強制 `T_Open` 清倉。
-* **B. 預測模組 (Price Action XGBoost):**
-    * 利用 VIX 斜率與寬度指標預測短期波動。
-    * **Action:** 僅調整 L4 參數（緊縮 K 值），不強制清倉（除非觸發硬性熔斷）。
+### **2.2 特徵工程升級 (Feature Engineering)**
+
+* **修改 02\_build\_features.py：**  
+  * **L1 宏觀特徵 (Macro Proxies):**  
+    * Junk\_Bond\_Stress: HYG / IEF (比值下降 \= 信用風險升高)。  
+    * Risk\_Off\_Flow: IEF / SPY (比值上升 \= 資金避險)。  
+  * **L3 微結構特徵 (Microstructure):**  
+    * Amihud\_Illiquidity: abs(Ret) / (Price \* Vol) (數值大 \= 流動性差/虛胖)。  
+    * Down\_Vol\_Prop: 過去 10 日「下跌量能」佔「總量能」的比例 (數值大 \= 恐慌拋售)。
+
+### **2.3 L1 防禦層：混合式崩盤預警 (Hybrid Defense)**
+
+* **邏輯升級：** 不只看市場寬度 (Breadth)，加入宏觀因子確認。  
+* **規則：**  
+  * **Condition A (內部):** Market Breadth \< 15%。  
+  * **Condition B (外部):** Junk\_Bond\_Stress 低於 20日均線 **且** Risk\_Off\_Flow 高於 20日均線 (即債券市場也發出警訊)。  
+  * **Action:** 若 A 或 B 成立，觸發 **熔斷 (Liquidation)**。
+
+### **2.4 L3 排序層：微結構增強排序 (Microstructure Ranking)**
+
+* **邏輯升級：** 不再只看 RSI 誰最低，而是看誰「跌得最健康」。  
+* **排序分數 (Score):**  
+  * 基礎分：RSI (越低分越高)。  
+  * 懲罰項：若 Amihud 過高 (流動性枯竭) 或 Down\_Vol\_Prop 過高 (主力出貨)，扣分。  
+* **Action:** 每日選取 Score 最高的 Top 5 進行交易。
+
+### **2.5 L4 出場層：動態追蹤止盈 (Dynamic Trailing Stop)**
+
+* **機制:** 隔日更新的移動止損。  
+* **公式:**
+$$Stop\_Price_T = Highest\_High_{(Entry \to T-1)} - (K \times ATR_{T-1})$$
+* **動態 K:** 預設 $K=3.0$；若 L1 宏觀指標轉差，縮緊至 $K=1.5$。
+
+## ---
+
 
 ---
 
