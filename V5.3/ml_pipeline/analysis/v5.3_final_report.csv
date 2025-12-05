@@ -1,0 +1,4 @@
+Scenario,Total Return,Sharpe,MaxDD,Trades,Final Equity
+V5.3 Custom (Merged),7.16%,0.12,-43.58%,719,"$107,158"
+V5.3 Custom (Toxic),-37.87%,-0.24,-46.87%,310,"$62,129"
+V5.3 Index (S&P100),34.74%,0.25,-36.23%,565,"$134,742"
