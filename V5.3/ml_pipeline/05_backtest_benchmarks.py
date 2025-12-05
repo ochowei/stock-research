@@ -177,26 +177,29 @@ def main():
     OUTPUT_DIR = os.path.join(SCRIPT_DIR, 'analysis')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("=== V5.3 Step 1.2: Dual-Track Benchmark Backtesting ===")
+    print("=== V5.3 Step 1.2: Multi-Track Benchmark Backtesting (Origin/Standard/Final) ===")
 
     master_df = load_data(SCRIPT_DIR)
     if master_df is None: return
 
-    # --- 2. 設定雙軌回測 ---
+    # --- 2. 設定三軌回測 (Origin, Standard, Final) ---
     backtest_groups = {
         "origin": DataLoader(SCRIPT_DIR,
                              normal_file='origin_asset_pool.json',
                              toxic_file='origin_toxic_asset_pool.json'),
-        "cleaned": DataLoader(SCRIPT_DIR,
+        "standard": DataLoader(SCRIPT_DIR,
                               normal_file='asset_pool.json',
-                              toxic_file='toxic_asset_pool.json')
+                              toxic_file='toxic_asset_pool.json'),
+        "final": DataLoader(SCRIPT_DIR,
+                            normal_file='final_asset_pool.json',
+                            toxic_file='final_toxic_asset_pool.json')
     }
 
     # --- 3. 循環執行 ---
     for group_name, loader in backtest_groups.items():
         run_and_report_for_group(group_name, loader, master_df, OUTPUT_DIR)
 
-    print(f"\n{'='*20} Dual-Track Backtesting Complete {'='*20}")
+    print(f"\n{'='*20} Multi-Track Backtesting Complete {'='*20}")
     print(f"All reports saved in: {OUTPUT_DIR}")
 
 if __name__ == "__main__":
