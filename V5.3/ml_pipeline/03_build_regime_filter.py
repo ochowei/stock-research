@@ -21,11 +21,10 @@ def main():
     Loads market breadth data and generates regime signals based on a threshold.
     """
     script_dir = get_script_dir()
-    v5_2_dir = os.path.abspath(os.path.join(script_dir, '..'))
 
-    # Define paths relative to V5.2 root
-    features_dir = os.path.join(v5_2_dir, 'features')
-    signals_dir = os.path.join(v5_2_dir, 'signals')
+    # Define paths relative to the script's directory
+    features_dir = os.path.join(script_dir, 'features')
+    signals_dir = os.path.join(script_dir, 'signals')
     os.makedirs(signals_dir, exist_ok=True)
 
     market_breadth_path = os.path.join(features_dir, 'market_breadth.parquet')
