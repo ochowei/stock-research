@@ -1,0 +1,122 @@
+valid,reason,days,ticker,pool
+True,Pass,1368,MP,Normal
+False,Missing Recent Data,473,IBIT,Normal
+False,Missing Recent Data,543,LAC,Normal
+True,Pass,2744,V,Normal
+True,Pass,1306,U,Normal
+True,Pass,2744,UUUU,Normal
+True,Pass,1233,IONQ,Normal
+True,Pass,2457,ABAT,Normal
+False,Missing Recent Data,450,UMAC,Normal
+True,Pass,1178,DOCN,Normal
+True,Pass,2744,UAMY,Normal
+True,Pass,1655,TMDX,Normal
+False,Missing Recent Data,677,NB,Normal
+True,Pass,1627,CRWD,Normal
+True,Pass,2744,CCJ,Normal
+True,Pass,1252,ONDS,Normal
+True,Pass,2744,TSLA,Normal
+True,Pass,1562,HIMS,Normal
+True,Pass,2744,PANW,Normal
+True,Pass,1162,RXRX,Normal
+False,Illiquid (>10% Zero Vol),2744,RCAT,Normal
+True,Pass,2744,BND,Normal
+True,Pass,2744,REMX,Normal
+True,Pass,1562,NET,Normal
+True,Pass,1090,HOOD,Normal
+True,Pass,2744,LEU,Normal
+True,Pass,2744,GLD,Normal
+True,Pass,2744,LUMN,Normal
+True,Pass,1308,SNOW,Normal
+True,Pass,1163,APP,Normal
+True,Pass,942,SMR,Normal
+True,Pass,2744,MGK,Normal
+True,Pass,2744,GLW,Normal
+True,Pass,2744,ON,Normal
+True,Pass,2744,QCOM,Normal
+True,Pass,1848,BE,Normal
+True,Pass,2744,SIVR,Normal
+True,Pass,2744,ORCL,Normal
+True,Pass,2744,BRK-B,Normal
+True,Pass,1057,BROS,Normal
+True,Pass,2301,VST,Normal
+True,Pass,2744,VOO,Normal
+True,Pass,2744,MSFT,Normal
+True,Pass,1680,FUBO,Normal
+False,Missing Recent Data,555,ARM,Normal
+True,Pass,1275,EOSE,Normal
+True,Pass,1012,IREN,Normal
+True,Pass,2744,UNH,Normal
+True,Pass,1649,UBER,Normal
+True,Pass,2744,CELH,Normal
+True,Pass,2744,WWR,Normal
+True,Pass,2744,MRVL,Normal
+True,Pass,2744,AMZN,Normal
+True,Pass,2649,SHOP,Normal
+True,Pass,1247,QBTS,Normal
+True,Pass,2744,AMD,Normal
+True,Pass,1298,PLTR,Normal
+True,Pass,2744,LRCX,Normal
+True,Pass,1927,SPOT,Normal
+True,Pass,1193,OSCR,Normal
+True,Pass,2744,NVDA,Normal
+True,Pass,1105,OKLO,Normal
+True,Pass,2744,IBM,Normal
+True,Pass,2744,ANET,Normal
+True,Pass,1558,DDOG,Normal
+True,Pass,2744,TSM,Normal
+True,Pass,2744,LTBR,Normal
+True,Pass,2744,FI,Normal
+True,Pass,1244,UPST,Normal
+True,Pass,2311,TTD,Normal
+False,Missing Recent Data,426,ALAB,Normal
+True,Pass,2744,MU,Normal
+False,Missing Recent Data,617,CAVA,Normal
+True,Pass,1370,OPEN,Normal
+True,Pass,1032,NVTS,Normal
+False,Missing Recent Data,200,SNDK,Normal
+True,Pass,2744,NVO,Normal
+True,Pass,901,SOUN,Normal
+True,Pass,2744,POWI,Normal
+True,Pass,2744,STX,Normal
+True,Pass,2744,MCD,Normal
+True,Pass,1242,ACHR,Normal
+True,Pass,2744,GOOG,Normal
+False,Missing Recent Data,118,CHYM,Normal
+True,Pass,1248,ABNB,Normal
+True,Pass,2744,ADBE,Normal
+True,Pass,2744,KTOS,Normal
+True,Pass,970,CEG,Normal
+True,Pass,1091,DUOL,Normal
+True,Pass,2744,NLR,Normal
+False,Missing Recent Data,85,FIG,Normal
+True,Pass,1255,GRAB,Normal
+False,Missing Recent Data,401,RBRK,Normal
+True,Pass,1284,CIFR,Normal
+True,Pass,1233,SOFI,Normal
+False,No Data,0,MULN,Toxic
+False,No Data,0,FFIE,Toxic
+False,No Data,0,NKLA,Toxic
+False,Illiquid (>10% Zero Vol),1238,GOEV,Toxic
+True,Pass,1306,LCID,Toxic
+True,Pass,1140,PSNY,Toxic
+True,Pass,1191,BZFD,Toxic
+True,Pass,1027,RENT,Toxic
+True,Pass,1022,BIRD,Toxic
+True,Pass,1615,REAL,Toxic
+True,Pass,1370,OPEN,Toxic
+True,Pass,1161,DNA,Toxic
+True,Pass,1374,CLOV,Toxic
+True,Pass,1553,PTON,Toxic
+True,Pass,1655,BYND,Toxic
+True,Pass,1244,UPST,Toxic
+True,Pass,2160,CVNA,Toxic
+True,Pass,1226,AFRM,Toxic
+True,Pass,2744,MARA,Toxic
+True,Pass,2432,RIOT,Toxic
+True,Pass,2744,AMC,Toxic
+True,Pass,2744,GME,Toxic
+True,Pass,2744,BB,Toxic
+True,Pass,2744,KOSS,Toxic
+False,No Data,0,NYCB,Toxic
+True,Pass,2744,BBBY,Toxic
