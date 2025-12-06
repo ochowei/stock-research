@@ -1,0 +1,9 @@
+Total Return,MaxDD,Sharpe,Scenario
+7.16%,-43.58%,0.12,V5.3 Full (Trailing)
+154.78%,-35.73%,0.63,V5.3 Fixed 5D (No Trailing)
+182.77%,-48.66%,0.58,No L1 Defense (Trailing)
+-5.58%,-54.90%,0.05,No L3 Rank (RSI Sort)
+109.01%,-31.62%,0.53,"V5.2-Like (Fixed 5D, No L3)"
+349.26%,-40.86%,0.63,V5.1 Aggressive
+109.01%,-31.62%,0.53,V5.2 Risk-Aware
+299.42%,-33.72%,0.80,SPY (Buy & Hold)

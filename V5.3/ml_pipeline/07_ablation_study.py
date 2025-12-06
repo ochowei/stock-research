@@ -17,7 +17,8 @@ class AblationBacktester:
                  # Ablation Flags
                  use_l1=True,
                  use_l3=True,
-                 exit_mode='trailing' # 'trailing', 'fixed_5d', 'hold_forever'
+                 exit_mode='trailing', # 'trailing', 'fixed_5d'
+                 force_equal_weight=False
                  ):
         
         self.stock_df = stock_df.sort_index()
@@ -32,25 +33,22 @@ class AblationBacktester:
         self.use_l1 = use_l1
         self.use_l3 = use_l3
         self.exit_mode = exit_mode
+        self.force_equal_weight = force_equal_weight
         
-        # Risk Manager
         self.rm = RiskManager(target_risk=0.01, max_position_pct=0.2)
         
-        # Pre-calc T-1 signals (Anti-Lookahead)
         self._precalculate_signals()
         
-        # State
         self.cash = initial_capital
         self.positions = {} 
         self.equity_curve = []
         self.trade_log = []
         
-        # Data Prep
         self.daily_data = self.stock_df.reorder_levels(['timestamp', 'symbol']).sort_index()
         self.all_dates = self.daily_data.index.get_level_values('timestamp').unique().sort_values()
 
     def _precalculate_signals(self):
-        # Shift logic same as 06_backtest (Fixed)
+        # Shift logic (Anti-Lookahead)
         cols_to_shift = ['RSI_2', 'SMA_200', 'close', 'ATR_14']
         col_map = {c: c for c in self.stock_df.columns}
         for target in cols_to_shift:
@@ -114,7 +112,6 @@ class AblationBacktester:
                     pos = self.positions[sym]
                     row = today_bar.loc[sym]
                     
-                    # Update holding stats
                     pos['days_held'] += 1
                     
                     # 1. Trailing Stop (L4)
@@ -131,10 +128,6 @@ class AblationBacktester:
                     # 2. Fixed 5-Day (V5.2 Logic)
                     elif self.exit_mode == 'fixed_5d':
                         if pos['days_held'] >= 5:
-                            # Sell at Close (Standard V5.2) or Open? 
-                            # V5.2 used Open of T+5. 'days_held' increments at start of T.
-                            # So if held=5, we sell today.
-                            # Let's use Open for consistency with V5.3 execution style
                             self._execute_sell(sym, date, today_bar, reason="Fixed_5D")
 
             # --- C. Entries ---
@@ -164,7 +157,7 @@ class AblationBacktester:
             candidates = candidates.join(ranks[['prev_L3_Rank_Score']], how='inner')
             candidates = candidates.sort_values('prev_L3_Rank_Score', ascending=False)
         else:
-            # Fallback to RSI
+            # Fallback to RSI (V5.1/V5.2 Logic)
             candidates = candidates.sort_values('prev_RSI_2', ascending=True)
 
         targets = candidates.head(open_slots)
@@ -175,7 +168,15 @@ class AblationBacktester:
             price = row['open']
             atr = row['prev_ATR_14']
             
-            shares = self.rm.calculate_position_size(self._get_current_equity(), price, atr)
+            # --- Sizing Logic ---
+            if self.force_equal_weight:
+                # V5.1 Aggressive Logic
+                total_equity = self._get_current_equity()
+                alloc_per_trade = total_equity / self.max_positions
+                shares = int(alloc_per_trade / price)
+            else:
+                # V5.2/V5.3 Risk-Aware Logic
+                shares = self.rm.calculate_position_size(self._get_current_equity(), price, atr)
             
             if shares > 0:
                 cost = shares * price * (1 + SLIPPAGE + TRANSACTION_COST)
@@ -245,6 +246,21 @@ def load_data(base_dir, track='custom'):
         rank = rank.set_index(['timestamp', 'symbol'])
     return stock, regime, rank, breadth
 
+def load_spy_benchmark(base_dir, track='custom'):
+    market_path = os.path.join(base_dir, 'data', track, 'market_indicators.parquet')
+    if not os.path.exists(market_path): return pd.Series()
+    df = pd.read_parquet(market_path).reset_index()
+    
+    if 'symbol' in df.columns:
+        spy_df = df[df['symbol'].str.upper() == 'SPY'].copy()
+    else:
+        return pd.Series()
+
+    if spy_df.empty: return pd.Series()
+    spy_df = spy_df.set_index('timestamp').sort_index()
+    price = spy_df['close']
+    return (price / price.iloc[0]) * INITIAL_CAPITAL
+
 def filter_tickers(df, tickers):
     return df[df.index.get_level_values('symbol').isin(tickers)]
 
@@ -267,53 +283,80 @@ def main():
     stock, regime, rank, breadth = load_data(script_dir, 'custom')
     stock = filter_tickers(stock, merged_tickers)
     
-    # Scenarios
+    # --- Defined Scenarios ---
     scenarios = [
-        # 1. The V5.3 System (Current)
-        {'name': 'V5.3 Full (Trailing)', 'l1': True, 'l3': True, 'exit': 'trailing'},
+        # --- Ablation Set ---
+        {'name': 'V5.3 Full (Trailing)',        'l1': True,  'l3': True,  'exit': 'trailing', 'eqwt': False},
+        {'name': 'V5.3 Fixed 5D (No Trailing)', 'l1': True,  'l3': True,  'exit': 'fixed_5d', 'eqwt': False},
+        {'name': 'No L1 Defense (Trailing)',    'l1': False, 'l3': True,  'exit': 'trailing', 'eqwt': False},
+        {'name': 'No L3 Rank (RSI Sort)',       'l1': True,  'l3': False, 'exit': 'trailing', 'eqwt': False},
+        {'name': 'V5.2-Like (Fixed 5D, No L3)', 'l1': True,  'l3': False, 'exit': 'fixed_5d', 'eqwt': False},
         
-        # 2. Diagnose L4: Is Trailing Stop hurting? -> Try Fixed 5D
-        {'name': 'V5.3 Fixed 5D (No Trailing)', 'l1': True, 'l3': True, 'exit': 'fixed_5d'},
-        
-        # 3. Diagnose L1: Is Hybrid Defense hurting?
-        {'name': 'No L1 Defense (Trailing)', 'l1': False, 'l3': True, 'exit': 'trailing'},
-        
-        # 4. Diagnose L3: Is Microstructure Ranking hurting?
-        {'name': 'No L3 Rank (RSI Sort)', 'l1': True, 'l3': False, 'exit': 'trailing'},
-        
-        # 5. Baseline Check (Like V5.2 but with Lookahead Fix)
-        {'name': 'V5.2-Like (Fixed 5D, No L3)', 'l1': True, 'l3': False, 'exit': 'fixed_5d'},
+        # --- Historical Benchmarks (Re-run on same data) ---
+        {'name': 'V5.1 Aggressive',             'l1': False, 'l3': False, 'exit': 'fixed_5d', 'eqwt': True},
+        {'name': 'V5.2 Risk-Aware',             'l1': True,  'l3': False, 'exit': 'fixed_5d', 'eqwt': False},
     ]
     
     results = []
-    print("=== V5.3 Ablation Study (Merged Pool) ===")
+    equity_curves = {} 
     
-    plt.figure(figsize=(12, 7))
+    print("=== V5.3 Comprehensive Ablation & Benchmark Study ===")
     
+    # Run Strategies
     for s in scenarios:
         print(f"Running: {s['name']}...")
         bt = AblationBacktester(stock, regime, rank, breadth, 
-                                use_l1=s['l1'], use_l3=s['l3'], exit_mode=s['exit'])
+                                use_l1=s['l1'], use_l3=s['l3'], 
+                                exit_mode=s['exit'], force_equal_weight=s['eqwt'])
         eq, _ = bt.run()
         
         if not eq.empty:
             met = calculate_metrics(eq['equity'])
             met['Scenario'] = s['name']
             results.append(met)
-            
-            norm = eq['equity'] / eq['equity'].iloc[0]
-            plt.plot(norm.index, norm, label=s['name'])
-            
+            equity_curves[s['name']] = eq['equity']
+
+    # Get SPY Benchmark
+    print("Loading SPY Benchmark...")
+    spy_curve = load_spy_benchmark(script_dir, 'custom')
+    if not spy_curve.empty:
+        common_idx = equity_curves[list(equity_curves.keys())[0]].index
+        spy_curve = spy_curve.reindex(common_idx, method='ffill').fillna(method='bfill')
+        spy_curve = spy_curve / spy_curve.iloc[0] * INITIAL_CAPITAL
+        met = calculate_metrics(spy_curve)
+        met['Scenario'] = 'SPY (Buy & Hold)'
+        results.append(met)
+        equity_curves['SPY (Buy & Hold)'] = spy_curve
+
     # Report
     df = pd.DataFrame(results)
-    print("\n" + df.to_string(index=False))
-    df.to_csv(os.path.join(output_dir, 'v5.3_ablation.csv'), index=False)
+    cols = ['Scenario', 'Total Return', 'Sharpe', 'MaxDD']
+    print("\n" + df[cols].to_string(index=False))
+    df.to_csv(os.path.join(output_dir, 'v5.3_full_ablation.csv'), index=False)
     
-    plt.title('V5.3 Ablation Study (Lookahead Fixed)')
+    # Plotting
+    plt.figure(figsize=(14, 8))
+    
+    styles = {
+        'V5.3 Fixed 5D (No Trailing)': {'color': '#2ca02c', 'lw': 3, 'ls': '-'}, # Green, Bold (Winner)
+        'V5.3 Full (Trailing)':        {'color': '#9467bd', 'lw': 1.5, 'ls': ':'}, 
+        'V5.2 Risk-Aware':             {'color': '#1f77b4', 'lw': 2, 'ls': '--'}, 
+        'V5.1 Aggressive':             {'color': '#ff7f0e', 'lw': 2, 'ls': '--'}, 
+        'SPY (Buy & Hold)':            {'color': 'gray', 'lw': 1.5, 'ls': '-.', 'alpha': 0.7}
+    }
+    
+    for name, curve in equity_curves.items():
+        norm = curve / curve.iloc[0]
+        s = styles.get(name, {'color': 'black', 'lw': 1, 'alpha': 0.5}) # Default style for others
+        plt.plot(norm.index, norm, label=name, **s)
+        
+    plt.title('V5.3 Full Comparison: Evolution & Ablation')
+    plt.xlabel('Date')
+    plt.ylabel('Normalized Equity')
     plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, 'v5.3_ablation_chart.png'))
-    print(f"\nAnalysis saved to {output_dir}")
+    plt.grid(True, alpha=0.3)
+    plt.savefig(os.path.join(output_dir, 'v5.3_full_ablation_chart.png'))
+    print(f"\nFull analysis saved to {output_dir}")
 
 if __name__ == "__main__":
     main()
