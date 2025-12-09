@@ -41,6 +41,12 @@ Shutterstock
 * **下市公司：** 對於已經下市（Delisted）的公司，Yahoo Finance 常常會直接移除數據，或者數據極度不完整。  
 * **代碼變更：** 如果公司更改了股票代碼（Ticker），舊代碼的數據可能無法透過自動導向找到，需要手動搜尋新代碼。
 
+### **5\. 交易時段**
+
+* ** RTH + ETH：** Yahoo Finance 可以使用 prepost，來取得 ETH 時段的交易資訊。  
+
+
+
 ### ---
 
 **如何在程式碼中處理這些限制？**
@@ -65,6 +71,8 @@ data\_5m \= tsmc.history(period="50d", interval="5m")
 \# 3\. 錯誤範例：嘗試抓取 1 年前的 5 分鐘線  
 \# 這會導致錯誤或只回傳最近 60 天的數據  
 \# data\_error \= tsmc.history(period="1y", interval="5m") 
+
+
 
 ### **總結**
 
