@@ -318,26 +318,36 @@ def get_market_data(tickers):
     return data_map
 
 def generate_live_dashboard():
-    print(f"\n>>> V6.1 Gap Strategy Dashboard (Optimized)")
+    print(f"\n>>> V6.1 Gap Strategy Dashboard (Holding Pool Mode)")
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
-    # 1. 載入清單
+    # --- 修改重點 1: 定義持倉檔案 ---
+    HOLDING_POOL_FILE = '2025_holding_asset_pool.json'
+
+    # --- 修改重點 2: 載入清單 ---
+    # 1. 載入主要檢查對象：持倉清單
+    pool_holding = load_tickers_from_json(HOLDING_POOL_FILE)
+
+    # 2. 仍需載入參考清單，用於「分類」(判斷持倉是 Toxic 還是 Asset，以決定策略參數)
     pool_toxic = load_tickers_from_json(TOXIC_POOL_FILE)
-    pool_asset = load_tickers_from_json(ASSET_POOL_FILE)
     pool_sensitive = load_tickers_from_json(SENSITIVE_POOL_FILE)
     
-    all_tickers = list(set(pool_toxic + pool_asset + pool_sensitive))
-    # 排除黑名單
-    valid_tickers = [t for t in all_tickers if t not in MOMENTUM_BLACKLIST]
+    # 3. 設定檢查範圍僅為持倉股
+    all_tickers = pool_holding
+    
+    # --- 修改重點 3: 處理黑名單 ---
+    # 原本的邏輯會過濾掉 NVDA, AMD 等動能股。
+    # 既然是檢查持倉，我們這裡選擇「不過濾」，直接檢查所有持倉股。
+    valid_tickers = all_tickers
+    # 如果您仍希望過濾掉高動能股，請取消註解下面這行：
+    # valid_tickers = [t for t in all_tickers if t not in MOMENTUM_BLACKLIST]
     
     print(f"清單概況:")
-    print(f"  - Asset Pool (A): {len(pool_asset)} 檔")
-    print(f"  - Toxic Pool (T): {len(pool_toxic)} 檔")
-    print(f"  - Sensitive Pool (S): {len(pool_sensitive)} 檔")
+    print(f"  - Holding Pool (Monitor): {len(pool_holding)} 檔")
     print(f"  - 監控總數: {len(valid_tickers)} 檔")
 
-    # 2. 取得環境狀態
+    # 2. 取得環境狀態 (保持不變)
     is_totm, is_pre_holiday, cal_status_str = get_calendar_status()
     eth_ret, eth_status, eth_light = get_crypto_sentiment()
     
@@ -357,7 +367,7 @@ def generate_live_dashboard():
     else:
         print(f"  🪙 Crypto: 平日模式 (無週末濾網)")
 
-    # 3. 取得數據 (已優化)
+    # 3. 取得數據 (保持不變)
     market_data = get_market_data(valid_tickers)
     
     # 檢查是否有數據回傳
@@ -379,16 +389,19 @@ def generate_live_dashboard():
         
         gap_pct = (curr_price - prev_close) / prev_close
         
-        # 只看 Gap Up
+        # --- 修改重點 4: 移除 Gap > 0 的限制 (可選) ---
+        # 如果您是持倉檢查，可能連 Gap Down 也想看？
+        # 如果只想看 Gap Up 的賣出訊號，保持下面這行。
+        # 如果想看所有持倉表現，建議註解掉下面這行。
         if gap_pct <= 0: continue
             
-        # 分類與邏輯
+        # 分類與邏輯 (利用載入的 pool_toxic/sensitive 進行分類)
         if ticker in pool_toxic:
             category = "Toxic"; cat_code = "T"
         elif ticker in pool_sensitive:
             category = "Sensitive"; cat_code = "S"
         else:
-            category = "Asset"; cat_code = "A"
+            category = "Asset"; cat_code = "A" # 預設分類
             
         atr_pct = data['atr_pct']
         pre_fade = data['pre_fade']
@@ -399,7 +412,7 @@ def generate_live_dashboard():
         else:
             dynamic_threshold = DEFAULT_GAP_THRESHOLD
             
-        # --- [NEW] 計算觸發價格 ---
+        # 計算觸發價格
         trigger_price = prev_close * (1 + dynamic_threshold)
             
         # 訊號判斷
@@ -407,7 +420,7 @@ def generate_live_dashboard():
         score = 0
         
         if gap_pct > dynamic_threshold:
-            # ... (原本的訊號判斷邏輯保持不變) ...
+            # ... (以下判斷邏輯保持不變) ...
             if category in ["Toxic", "Sensitive"] and eth_status == "RED":
                 status = "✋ HOLD (ETH)"; score = -2
             elif category == "Asset" and (is_totm or is_pre_holiday):
@@ -439,20 +452,19 @@ def generate_live_dashboard():
             'Gap%': gap_pct, 'Thres%': dynamic_threshold,
             'Fade%': pre_fade, 'ATR%': atr_pct,
             'Price': curr_price, 
-            'TrigPx': trigger_price,  # --- [NEW] 加入資料 ---
+            'TrigPx': trigger_price,
             'Status': status, 'Score': score
         })
             
-    # 4. 輸出報表
+    # 4. 輸出報表 (保持不變)
     if not report_data:
-        print("\n無 Gap > 0 標的。")
+        print("\n無 Gap > 0 標的 (或無符合條件的持倉)。")
         return
 
     df = pd.DataFrame(report_data)
     df.sort_values(by=['Score', 'Gap%'], ascending=[False, False], inplace=True)
     
-    # --- [NEW] 更新表頭與輸出格式 (增加 TrigPx) ---
-    print("\n" + "="*105) # 稍微加寬分隔線
+    print("\n" + "="*105) 
     print(f"{'Ticker':<6} {'Cat':<3} {'Gap%':>7} {'Thres%':>7} {'Fade%':>7} {'ATR%':>6} {'Price':>8} {'TrigPx':>8} {'Status':<20}")
     print("-" * 105)
     
@@ -466,7 +478,7 @@ def generate_live_dashboard():
               f"{row['Price']:>8.2f} {row['TrigPx']:>8.2f} {row['Status']:<20}")
     print("="*105)
 
-    outfile = os.path.join(OUTPUT_DIR, f'gap_signals_{datetime.now().strftime("%Y%m%d")}.csv')
+    outfile = os.path.join(OUTPUT_DIR, f'holding_gap_signals_{datetime.now().strftime("%Y%m%d")}.csv')
     df.to_csv(outfile, index=False)
     print(f"\n[Saved] {outfile}")
 
