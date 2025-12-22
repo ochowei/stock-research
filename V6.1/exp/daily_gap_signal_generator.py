@@ -212,49 +212,28 @@ def download_data_in_batches(tickers, period, interval, prepost=False):
         print(f"  [Error] Data merge failed: {e}")
         return pd.DataFrame()
 
+# --- 替換部分開始 ---
+
 def get_market_data(tickers):
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在下載 {len(tickers)} 檔股票數據 (分批處理)...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在下載 {len(tickers)} 檔股票數據...")
     data_map = {}
     
-    # 1. 下載日線 (Batch)
+    # 1. 下載數據 (為了簡化與穩定，直接抓 5 天的 1m 數據來找最新價格，抓 1mo 日線找昨收)
+    # 下載日線 (Batch)
     try:
         df_daily = download_data_in_batches(tickers, period="1mo", interval="1d")
-        
-        if df_daily.empty: return {}
-        
-        # 處理 MultiIndex
-        if isinstance(df_daily.columns, pd.MultiIndex): 
-            # 這是標準情況
-            closes = df_daily['Close']
-            highs = df_daily['High']
-            lows = df_daily['Low']
-        else:
-            # 單一股票情況 (yfinance 有時會降維)
-            # 為了通用性，手動轉回 DataFrame
-            closes = pd.DataFrame({tickers[0]: df_daily['Close']})
-            highs = pd.DataFrame({tickers[0]: df_daily['High']})
-            lows = pd.DataFrame({tickers[0]: df_daily['Low']})
-            
     except Exception as e:
         print(f"[Error] 日線下載失敗: {e}")
         return {}
 
-    # 2. 下載盤前 (Batch)
+    # 下載盤前 (Batch)
     try:
         df_intraday = download_data_in_batches(tickers, period="5d", interval="1m", prepost=True)
-        
-        if df_intraday.empty: 
-            # 盤前數據失敗不應阻擋主流程，回傳已有的日線數據即可
-            # 但需標記無盤前
-            pass
-        else:
+        if not df_intraday.empty:
             if df_intraday.index.tz is None:
                 df_intraday.index = df_intraday.index.tz_localize('UTC').tz_convert('America/New_York')
             else:
                 df_intraday.index = df_intraday.index.tz_convert('America/New_York')
-            
-        current_date = df_intraday.index[-1].date() if not df_intraday.empty else date.today()
-        
     except Exception as e:
         print(f"[Error] 分時數據下載失敗: {e}")
         return {}
@@ -262,48 +241,63 @@ def get_market_data(tickers):
     # 3. 整合數據
     for ticker in tickers:
         try:
-            # --- 日線處理 ---
-            if ticker not in closes.columns: 
-                # 可能下載失敗或 Delisted
+            # --- A. 取得 Prev Close (昨收) ---
+            # 處理 MultiIndex 或 Single Index
+            if isinstance(df_daily.columns, pd.MultiIndex):
+                if ticker not in df_daily['Close'].columns:
+                    # print(f"  [Skip] {ticker} 無日線數據")
+                    continue
+                c = df_daily['Close'][ticker].dropna()
+                h = df_daily['High'][ticker].dropna()
+                l = df_daily['Low'][ticker].dropna()
+            else:
+                if ticker not in df_daily.columns: # 針對單一股票結構可能不同，這裡簡化判斷
+                     # 如果只有一檔股票且沒有 MultiIndex，columns 可能直接是 'Close', 'Open'...
+                     # 但 download_data_in_batches 試圖合併，通常會有 MultiIndex
+                     pass
+                c = df_daily['Close'].dropna()
+                h = df_daily['High'].dropna()
+                l = df_daily['Low'].dropna()
+
+            if len(c) < 2: 
                 continue
-            
-            c = closes[ticker].dropna()
-            h = highs[ticker].dropna()
-            l = lows[ticker].dropna()
-            
-            if len(c) < 15: continue
+
             prev_close = float(c.iloc[-1])
             
-            # ATR 計算
+            # ATR 計算 (14日)
             tr = h - l 
             atr = tr.rolling(14).mean().iloc[-1]
             atr_pct = atr / prev_close if prev_close > 0 else 0
 
-            # --- 盤前處理 ---
+            # --- B. 取得 Current Price (現價) ---
+            # 邏輯：優先找 Intraday 最後一筆，如果沒有則用日線最後一筆
             curr_price = np.nan
             pre_high = np.nan
             
-            if not df_intraday.empty and ticker in df_intraday['Close'].columns:
-                series_c = df_intraday['Close'][ticker]
-                # 嘗試獲取 High，若無則用 Close
-                if 'High' in df_intraday.columns and ticker in df_intraday['High'].columns:
-                    series_h = df_intraday['High'][ticker]
-                else:
-                    series_h = series_c
+            # 嘗試從 Intraday 獲取
+            if not df_intraday.empty:
+                # 處理 Columns
+                if isinstance(df_intraday.columns, pd.MultiIndex):
+                     if ticker in df_intraday['Close'].columns:
+                        series_c = df_intraday['Close'][ticker].dropna()
+                        series_h = df_intraday['High'][ticker].dropna() if 'High' in df_intraday.columns else series_c
+                        
+                        if not series_c.empty:
+                            curr_price = float(series_c.iloc[-1])
+                            # 盤前高點邏輯 (簡單取最後一天的高點)
+                            last_date = series_c.index[-1].date()
+                            today_mask = series_c.index.date == last_date
+                            pre_high = float(series_h[today_mask].max())
+            
+            # 如果 Intraday 沒抓到，回退使用日線 Close (代表尚未開盤或資料延遲)
+            if pd.isna(curr_price):
+                curr_price = prev_close
                 
-                # 篩選今日
-                today_mask = series_c.index.date == current_date
-                today_close = series_c[today_mask]
-                today_high = series_h[today_mask]
-                
-                if not today_close.empty:
-                    curr_price = float(today_close.iloc[-1])
-                    pre_high = float(today_high.max())
-
             # --- Pre-Fade 計算 ---
             pre_fade = 0.0
             if pd.notna(pre_high) and pre_high > 0 and pd.notna(curr_price):
-                pre_fade = (pre_high - curr_price) / pre_high
+                if pre_high > curr_price:
+                    pre_fade = (pre_high - curr_price) / pre_high
 
             data_map[ticker] = {
                 'prev_close': prev_close, 
@@ -312,175 +306,141 @@ def get_market_data(tickers):
                 'pre_fade': pre_fade, 
                 'atr_pct': atr_pct
             }
-        except Exception:
+        except Exception as e:
+            # print(f"  [Error] 處理 {ticker} 時發生錯誤: {e}")
             continue
             
     return data_map
 
 def generate_live_dashboard():
-    print(f"\n>>> V6.1 Gap Strategy Dashboard (Holding Pool Mode)")
+    print(f"\n>>> V6.1 Gap Strategy Dashboard (Holding Monitor)")
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
-    # --- 修改重點 1: 定義持倉檔案 ---
+    # 1. 設定檔案路徑
     HOLDING_POOL_FILE = '2025_holding_asset_pool.json'
 
-    # --- 修改重點 2: 載入清單 ---
-    # 1. 載入主要檢查對象：持倉清單
+    # 2. 載入清單
     pool_holding = load_tickers_from_json(HOLDING_POOL_FILE)
-
-    # 2. 仍需載入參考清單，用於「分類」(判斷持倉是 Toxic 還是 Asset，以決定策略參數)
     pool_toxic = load_tickers_from_json(TOXIC_POOL_FILE)
     pool_sensitive = load_tickers_from_json(SENSITIVE_POOL_FILE)
     
-    # 3. 設定檢查範圍僅為持倉股
-    all_tickers = pool_holding
-    
-    # --- 修改重點 3: 處理黑名單 ---
-    # 原本的邏輯會過濾掉 NVDA, AMD 等動能股。
-    # 既然是檢查持倉，我們這裡選擇「不過濾」，直接檢查所有持倉股。
-    valid_tickers = all_tickers
-    # 如果您仍希望過濾掉高動能股，請取消註解下面這行：
-    # valid_tickers = [t for t in all_tickers if t not in MOMENTUM_BLACKLIST]
+    # 直接監控所有持倉，不使用黑名單過濾
+    valid_tickers = pool_holding
     
     print(f"清單概況:")
-    print(f"  - Holding Pool (Monitor): {len(pool_holding)} 檔")
-    print(f"  - 監控總數: {len(valid_tickers)} 檔")
+    print(f"  - Holding Pool: {len(pool_holding)} 檔")
+    
+    if not valid_tickers:
+        print("[Error] 持倉清單為空或讀取失敗。")
+        return
 
-    # 2. 取得環境狀態 (保持不變)
+    # 3. 取得環境狀態
     is_totm, is_pre_holiday, cal_status_str = get_calendar_status()
     eth_ret, eth_status, eth_light = get_crypto_sentiment()
     
     print(f"\n[Market Context]")
     print(f"  📅 Calendar: {cal_status_str}")
-    
-    if is_totm:
-        print(f"     👉 Asset Pool: ⚠️ 暫停交易 (月初法人買盤)")
-        print(f"     👉 Toxic Pool: 🔥 積極交易 (資金再平衡效應)")
-    if is_pre_holiday:
-        print(f"     👉 All Pools : ⚠️ 節前量縮 (小心假訊號)")
-
     if eth_status != "Weekday":
         print(f"  🪙 Crypto: ETH {eth_ret*100:+.2f}% {eth_light}")
-        if eth_status == "RED":
-            print(f"     👉 Toxic/Sensitive: ⛔ 暫停交易 (ETH > 5% 暴漲)")
-    else:
-        print(f"  🪙 Crypto: 平日模式 (無週末濾網)")
 
-    # 3. 取得數據 (保持不變)
+    # 4. 取得數據
     market_data = get_market_data(valid_tickers)
     
-    # 檢查是否有數據回傳
     if not market_data:
-        print("\n[Error] 無法獲取任何市場數據，請檢查網路連線或代碼清單。")
+        print("\n[Error] 無法獲取市場數據。")
         return
 
     report_data = []
     
     for ticker in valid_tickers:
-        if ticker not in market_data: continue
+        if ticker not in market_data: 
+            # 記錄無數據的標的
+            # report_data.append({'Ticker': ticker, 'Status': 'No Data', 'Score': -99})
+            continue
+            
         data = market_data[ticker]
-        
         curr_price = data['curr_price']
         prev_close = data['prev_close']
         
-        # 過濾掉無效數據
-        if pd.isna(curr_price) or prev_close <= 0: continue
+        if prev_close <= 0: continue
         
+        # 計算漲跌幅
         gap_pct = (curr_price - prev_close) / prev_close
         
-        # --- 修改重點 4: 移除 Gap > 0 的限制 (可選) ---
-        # 如果您是持倉檢查，可能連 Gap Down 也想看？
-        # 如果只想看 Gap Up 的賣出訊號，保持下面這行。
-        # 如果想看所有持倉表現，建議註解掉下面這行。
-        # if gap_pct <= 0: continue
-            
-        # 分類與邏輯 (利用載入的 pool_toxic/sensitive 進行分類)
-        if ticker in pool_toxic:
-            category = "Toxic"; cat_code = "T"
-        elif ticker in pool_sensitive:
-            category = "Sensitive"; cat_code = "S"
-        else:
-            category = "Asset"; cat_code = "A" # 預設分類
+        # [關鍵修改] 這裡移除了 "if gap_pct <= 0: continue"，讓所有股票都能顯示
+        
+        # 分類
+        if ticker in pool_toxic: cat_code = "T"; category = "Toxic"
+        elif ticker in pool_sensitive: cat_code = "S"; category = "Sensitive"
+        else: cat_code = "A"; category = "Asset"
             
         atr_pct = data['atr_pct']
         pre_fade = data['pre_fade']
         
-        # 動態門檻
+        # 門檻
         if category in ["Toxic", "Sensitive"]:
             dynamic_threshold = max(DEFAULT_GAP_THRESHOLD, 0.3 * atr_pct)
         else:
             dynamic_threshold = DEFAULT_GAP_THRESHOLD
-            
-        # 計算觸發價格
+
         trigger_price = prev_close * (1 + dynamic_threshold)
-            
-        # 訊號判斷
-        status = "WAIT"
+
+        # 狀態判斷
+        status = "Watching"
         score = 0
         
         if gap_pct > dynamic_threshold:
-            # ... (以下判斷邏輯保持不變) ...
-            if category in ["Toxic", "Sensitive"] and eth_status == "RED":
-                status = "✋ HOLD (ETH)"; score = -2
-            elif category == "Asset" and (is_totm or is_pre_holiday):
-                status = "✋ SKIP (Calendar)"; score = -1
-            elif category in ["Toxic", "Sensitive"] and is_totm:
-                if pre_fade > FADE_THRESHOLD_PCT:
-                    status = "🔥🔥 TOTM SELL"; score = 4
-                else:
-                    status = "🔥 TOTM (Fade?)"; score = 2
-            else:
-                if category in ["Toxic", "Sensitive"] and eth_status == "YELLOW":
-                    if pre_fade > FADE_THRESHOLD_PCT:
-                        status = "⚠️ RISKY SELL"; score = 1
-                    else:
-                        status = "WAIT (Yellow)"; score = 0
-                elif category in ["Toxic", "Sensitive"] and is_pre_holiday:
-                     if pre_fade > FADE_THRESHOLD_PCT:
-                        status = "⚠️ Holiday SELL"; score = 1
-                     else:
-                        status = "WAIT (Holiday)"; score = 0
-                else:
-                    if pre_fade > FADE_THRESHOLD_PCT:
-                        status = "🔴 STRONG SELL"; score = 3
-                    else:
-                        status = "🔴 SELL"; score = 2
-        
+            status = "🔴 GAP UP"
+            score = 2
+            # 簡單的過濾邏輯顯示
+            if category == "Asset" and (is_totm or is_pre_holiday): status += " (Skip)"
+        elif gap_pct < -0.02:
+            status = "🟢 GAP DOWN"
+            score = -1
+        elif abs(gap_pct) <= 0.001:
+            status = "Flat"
+            
         report_data.append({
             'Ticker': ticker, 'Cat': cat_code,
             'Gap%': gap_pct, 'Thres%': dynamic_threshold,
             'Fade%': pre_fade, 'ATR%': atr_pct,
-            'Price': curr_price, 
-            'TrigPx': trigger_price,
+            'Price': curr_price, 'TrigPx': trigger_price,
             'Status': status, 'Score': score
         })
             
-    # 4. 輸出報表 (保持不變)
+    # 5. 輸出報表
     if not report_data:
-        print("\n無 Gap > 0 標的 (或無符合條件的持倉)。")
+        print("\n無數據可顯示。")
         return
 
     df = pd.DataFrame(report_data)
-    df.sort_values(by=['Score', 'Gap%'], ascending=[False, False], inplace=True)
+    # 依照漲跌幅排序
+    df.sort_values(by=['Gap%'], ascending=False, inplace=True)
     
     print("\n" + "="*105) 
     print(f"{'Ticker':<6} {'Cat':<3} {'Gap%':>7} {'Thres%':>7} {'Fade%':>7} {'ATR%':>6} {'Price':>8} {'TrigPx':>8} {'Status':<20}")
     print("-" * 105)
     
     for _, row in df.iterrows():
-        mark = ">>" if row['Score'] >= 2 else "  "
-        if row['Score'] < 0: mark = "XX"
+        # 處理可能的 NaN
+        gap_val = row['Gap%'] if pd.notna(row['Gap%']) else 0
+        fade_val = row['Fade%'] if pd.notna(row['Fade%']) else 0
+        
+        mark = "  "
+        if gap_val > row['Thres%']: mark = ">>"
         
         print(f"{mark} {row['Ticker']:<6} {row['Cat']:<3} "
-              f"{row['Gap%']*100:>6.2f}% {row['Thres%']*100:>6.2f}% "
-              f"{row['Fade%']*100:>6.2f}% {row['ATR%']*100:>5.1f}% "
+              f"{gap_val*100:>6.2f}% {row['Thres%']*100:>6.2f}% "
+              f"{fade_val*100:>6.2f}% {row['ATR%']*100:>5.1f}% "
               f"{row['Price']:>8.2f} {row['TrigPx']:>8.2f} {row['Status']:<20}")
     print("="*105)
 
-    outfile = os.path.join(OUTPUT_DIR, f'holding_gap_signals_{datetime.now().strftime("%Y%m%d")}.csv')
+    outfile = os.path.join(OUTPUT_DIR, f'holding_monitor_{datetime.now().strftime("%Y%m%d")}.csv')
     df.to_csv(outfile, index=False)
     print(f"\n[Saved] {outfile}")
+
+# --- 替換部分結束 ---
 
 if __name__ == '__main__':
     try:
