@@ -399,11 +399,15 @@ def generate_live_dashboard():
         else:
             dynamic_threshold = DEFAULT_GAP_THRESHOLD
             
+        # --- [NEW] 計算觸發價格 ---
+        trigger_price = prev_close * (1 + dynamic_threshold)
+            
         # 訊號判斷
         status = "WAIT"
         score = 0
         
         if gap_pct > dynamic_threshold:
+            # ... (原本的訊號判斷邏輯保持不變) ...
             if category in ["Toxic", "Sensitive"] and eth_status == "RED":
                 status = "✋ HOLD (ETH)"; score = -2
             elif category == "Asset" and (is_totm or is_pre_holiday):
@@ -434,7 +438,9 @@ def generate_live_dashboard():
             'Ticker': ticker, 'Cat': cat_code,
             'Gap%': gap_pct, 'Thres%': dynamic_threshold,
             'Fade%': pre_fade, 'ATR%': atr_pct,
-            'Price': curr_price, 'Status': status, 'Score': score
+            'Price': curr_price, 
+            'TrigPx': trigger_price,  # --- [NEW] 加入資料 ---
+            'Status': status, 'Score': score
         })
             
     # 4. 輸出報表
@@ -445,9 +451,10 @@ def generate_live_dashboard():
     df = pd.DataFrame(report_data)
     df.sort_values(by=['Score', 'Gap%'], ascending=[False, False], inplace=True)
     
-    print("\n" + "="*95)
-    print(f"{'Ticker':<6} {'Cat':<3} {'Gap%':>7} {'Thres%':>7} {'Fade%':>7} {'ATR%':>6} {'Price':>8} {'Status':<20}")
-    print("-" * 95)
+    # --- [NEW] 更新表頭與輸出格式 (增加 TrigPx) ---
+    print("\n" + "="*105) # 稍微加寬分隔線
+    print(f"{'Ticker':<6} {'Cat':<3} {'Gap%':>7} {'Thres%':>7} {'Fade%':>7} {'ATR%':>6} {'Price':>8} {'TrigPx':>8} {'Status':<20}")
+    print("-" * 105)
     
     for _, row in df.iterrows():
         mark = ">>" if row['Score'] >= 2 else "  "
@@ -456,8 +463,8 @@ def generate_live_dashboard():
         print(f"{mark} {row['Ticker']:<6} {row['Cat']:<3} "
               f"{row['Gap%']*100:>6.2f}% {row['Thres%']*100:>6.2f}% "
               f"{row['Fade%']*100:>6.2f}% {row['ATR%']*100:>5.1f}% "
-              f"{row['Price']:>8.2f} {row['Status']:<20}")
-    print("="*95)
+              f"{row['Price']:>8.2f} {row['TrigPx']:>8.2f} {row['Status']:<20}")
+    print("="*105)
 
     outfile = os.path.join(OUTPUT_DIR, f'gap_signals_{datetime.now().strftime("%Y%m%d")}.csv')
     df.to_csv(outfile, index=False)
