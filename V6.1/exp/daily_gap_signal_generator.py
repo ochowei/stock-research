@@ -393,7 +393,7 @@ def generate_live_dashboard():
         # 如果您是持倉檢查，可能連 Gap Down 也想看？
         # 如果只想看 Gap Up 的賣出訊號，保持下面這行。
         # 如果想看所有持倉表現，建議註解掉下面這行。
-        if gap_pct <= 0: continue
+        # if gap_pct <= 0: continue
             
         # 分類與邏輯 (利用載入的 pool_toxic/sensitive 進行分類)
         if ticker in pool_toxic:
