@@ -8,6 +8,12 @@ on:
         description: 'Branch to run (default: current)'
         required: false
         default: ''
+        
+  schedule:
+    # UTC 13:15
+    # 夏令時間 (EDT, 3月-11月): 對應美東 09:15 AM (開盤前 15 分鐘)
+    # 冬令時間 (EST, 11月-3月): 對應美東 08:15 AM (開盤前 1 小時 15 分鐘)
+    - cron: '15 14 * * 1-5'
 
 jobs:
   run-gap-signal:
