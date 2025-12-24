@@ -180,6 +180,11 @@ def generate_report():
         gap = metrics['gap_pct']
         threshold = GAP_THRESHOLD # 預設 0.5%
         
+        # [新增] 計算 Gap Up / Gap Down 的觸發價格
+        prev_close = metrics['prev_close']
+        gap_up_px = prev_close * (1 + threshold)
+        gap_down_px = prev_close * (1 - threshold)
+        
         # 決定 Status
         status = "Watching"
         if gap > threshold: status = "🔴 GAP UP"
@@ -205,32 +210,34 @@ def generate_report():
             'Cat': 'A', # 假設 Holding 都是 Asset
             'Gap%': gap,
             'Thres%': threshold,
+            'GapUpPx': gap_up_px,    # 新增
+            'GapDnPx': gap_down_px,  # 新增
             'Fade%': metrics['fade_pct'],
             'ATR%': metrics['atr_pct'],
             'Price': metrics['price'],
-            'TrigPx': metrics['prev_close'] * (1 + (threshold if gap > 0 else -threshold)),
             'Status': status,
             'AI Prob': ai_prob_str,
             'Decision': ai_dec
         })
 
-    # 6. 排序與列印 (模仿舊版排版)
+    # 6. 排序與列印
     results.sort(key=lambda x: x['Gap%'], reverse=True)
     
-    print("\n" + "=" * 105)
-    # 格式化字串 (增加 AI 欄位)
-    header = f"{'Ticker':<6} {'Cat':<4} {'Gap%':>6} {'Thres%':>6} {'Fade%':>6} {'ATR%':>5} {'Price':>8} {'TrigPx':>8} {'Status':<12} {'AI Prob':>7} {'Decision':<8}"
+    print("\n" + "=" * 115)
+    # [調整] 格式化字串，將 Thres% 與 TrigPx 替換為 GapUp / GapDn
+    # 為了版面整齊，這裡適度調整了寬度
+    header = f"{'Ticker':<6} {'Gap%':>7} {'Price':>8} {'GapUp':>8} {'GapDn':>8} {'Fade%':>6} {'ATR%':>5} {'Status':<12} {'AI Prob':>7} {'Decision':<8}"
     print(header)
-    print("-" * 105)
+    print("-" * 115)
     
     for r in results:
-        # 顏色處理 (簡單版)
-        row_str = f"{r['Ticker']:<6} {r['Cat']:<4} {r['Gap%']*100:>5.2f}% {r['Thres%']*100:>5.2f}% " \
-                  f"{r['Fade%']*100:>5.2f}% {r['ATR%']*100:>4.1f}% {r['Price']:>8.2f} {r['TrigPx']:>8.2f} " \
+        row_str = f"{r['Ticker']:<6} {r['Gap%']*100:>6.2f}% {r['Price']:>8.2f} " \
+                  f"{r['GapUpPx']:>8.2f} {r['GapDnPx']:>8.2f} " \
+                  f"{r['Fade%']*100:>5.2f}% {r['ATR%']*100:>4.1f}% " \
                   f"{r['Status']:<12} {r['AI Prob']:>7} {r['Decision']:<8}"
         print(row_str)
         
-    print("=" * 105)
+    print("=" * 115)
     
     # 存檔
     csv_path = os.path.join(OUTPUT_DIR, f'holding_monitor_{datetime.now().strftime("%Y%m%d")}.csv')
