@@ -10,6 +10,7 @@ pandas-ta==0.4.71b0
 # Machine Learning (Random Forest)
 scikit-learn>=1.3.0
 xgboost
+joblib
 
 # Visualization
 matplotlib>=3.7.0
