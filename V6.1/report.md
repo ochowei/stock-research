@@ -80,10 +80,22 @@
         * 若遇 TOTM -> **DOUBLE** (加碼/放寬)。
         * 若 ETH 暴漲 -> **SKIP** (避開軋空)。
         * 若正常日 -> **GO**。
-5.  **進階標記 (Tags):**
-    * 若 `Pre-Market Fade > 1%` -> 標記 `[High Confidence]`。
+5.  **AI 決策 (AI Overlay):**
+    * 載入 `exp_07_model.joblib`。
+    * 若 AI 預測機率 > 50% -> **✅ GO** (標記為 Actionable)。
+    * 若 AI 預測機率 < 50% -> **❌ SKIP** (標記為 Low Confidence)。
 6.  **待驗證 (Pending):**
     * 執行 Exp-06。若發現顯著隔夜利潤，將在 V6.2 引入「隔夜留倉模組」。
+
+### **關鍵突破：AI 適性濾網 (The AI Breakthrough)**
+
+基於 **Exp-07** 的驚人成果，V6.1 策略迎來了最後一塊拼圖：**「機器學習適性濾網 (Next-Day Suitability Classifier)」**。
+
+* **邏輯轉變：** 從「被動過濾 (規則)」轉向「主動預測 (AI)」。
+* **實戰效果：** * 勝率從 **51%** 提升至 **60%**。
+    * 單筆期望值從 **0.05%** 提升至 **0.98%**。
+* **運作機制：** 每日早晨針對所有 Gap 訊號，利用 XGBoost 模型分析其 RSI、VIX 與量能結構，給出 `GO` (信心 > 50%) 或 `SKIP` 的建議。
+
 
 ---
 
