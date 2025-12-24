@@ -28,8 +28,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip' # 啟用快取以加速後續執行
+          python-version: '3.12'  # <--- 請將 3.10 改為 3.12
+          cache: 'pip'
 
       # 3. 安裝依賴套件
       # 改為讀取 requirements.txt 以支援 xgboost, joblib, pandas_ta 等新套件
