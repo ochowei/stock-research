@@ -11,109 +11,139 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import pandas_ta as ta
-import xgboost as xgb
-from pandas.tseries.holiday import USFederalHolidayCalendar
-from pandas.tseries.offsets import CustomBusinessDay
 
 # --- 設定 ---
 warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RESOURCE_DIR = os.path.join(BASE_DIR, '..', 'resource')
+# 指向資源目錄
+RESOURCE_DIR = os.path.join(BASE_DIR, '..', 'resource') 
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 MODEL_PATH = os.path.join(OUTPUT_DIR, 'exp_07_model.joblib')
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# [修改點 1] 指定讀取 Holding Pool
-TARGET_POOL_FILE = '2025_holding_asset_pool.json'
+# 檔案設定
+ASSET_POOL_FILE = '2025_final_asset_pool.json'
+HOLDING_POOL_FILE = '2025_holding_asset_pool.json'
 
-# 參數
-GAP_THRESHOLD = 0.005      # 0.5%
-AI_CONFIDENCE_LV = 0.50    # AI 門檻
+# 策略參數
+GAP_THRESHOLD = 0.005      # 0.5% (Gap Up 賣出門檻)
+DIP_THRESHOLD = 0.03       # 3.0% (Buy Dip 買進門檻 - 取絕對值)
+AI_CONFIDENCE_LV = 0.50    # AI 信心門檻
 
 # --- 工具函數 ---
 
-def load_tickers():
-    path = os.path.join(RESOURCE_DIR, TARGET_POOL_FILE)
-    if not os.path.exists(path):
-        # Fallback 找 V6.0
-        path = path.replace('V6.1', 'V6.0')
-        if not os.path.exists(path):
-            print(f"[Error] Cannot find {TARGET_POOL_FILE}")
-            return []
-            
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            raw = json.load(f)
-        return list(set([t.split(':')[-1].strip().replace('.', '-') for t in raw]))
-    except Exception as e:
-        print(f"[Error] Load failed: {e}")
-        return []
+def load_tickers_and_tags():
+    """
+    讀取 Asset Pool 與 Holding Pool，並回傳聯集列表與標籤對照表。
+    Returns:
+        tickers (list): 去重後的完整代號列表
+        tags (dict): { 'AMD': {'Asset', 'Held'}, 'TSLA': {'Asset'}, ... }
+    """
+    tags_map = {}
+    
+    # 1. 讀取 Final Asset Pool (潛在機會)
+    path_asset = os.path.join(RESOURCE_DIR, ASSET_POOL_FILE)
+    if os.path.exists(path_asset):
+        try:
+            with open(path_asset, 'r', encoding='utf-8') as f:
+                raw = json.load(f)
+                for t in raw:
+                    # 清洗 Ticker: "NYSE:AMD" -> "AMD", "BRK.B" -> "BRK-B"
+                    clean_t = t.split(':')[-1].strip().replace('.', '-')
+                    if clean_t not in tags_map: tags_map[clean_t] = set()
+                    tags_map[clean_t].add('Asset')
+        except Exception as e:
+            print(f"[Error] Failed to load Asset Pool: {e}")
+    else:
+        print(f"[Warning] Asset pool not found: {path_asset}")
 
-def get_calendar_status():
-    target_date = datetime.now().date()
-    # 簡化版日曆狀態
-    return "Normal(一般日)" 
+    # 2. 讀取 Holding Pool (庫存監控)
+    path_holding = os.path.join(RESOURCE_DIR, HOLDING_POOL_FILE)
+    if os.path.exists(path_holding):
+        try:
+            with open(path_holding, 'r', encoding='utf-8') as f:
+                raw = json.load(f)
+                for t in raw:
+                    clean_t = t.split(':')[-1].strip().replace('.', '-')
+                    if clean_t not in tags_map: tags_map[clean_t] = set()
+                    tags_map[clean_t].add('Held')
+        except Exception as e:
+            print(f"[Error] Failed to load Holding Pool: {e}")
+    else:
+        print(f"[Warning] Holding pool not found: {path_holding}")
+
+    # 3. 產生去重列表
+    all_tickers = sorted(list(tags_map.keys()))
+    return all_tickers, tags_map
 
 def get_current_vix():
     try:
         df = yf.download("^VIX", period="5d", interval="1d", progress=False)
+        if df.empty: return 20.0
         return float(df['Close'].iloc[-1])
     except:
         return 20.0
 
 def download_data(tickers):
-    # 下載足夠的歷史數據以計算 RSI(14)
+    # 下載日線 (計算 ATR, RSI)
     data = yf.download(tickers, period="3mo", interval="1d", progress=False, auto_adjust=True, threads=True)
-    
-    # 取得最新盤前/盤中數據 (1m) 用於計算即時 Gap/Fade
+    # 下載盤前/盤中 (計算 Gap) - 這裡抓 5 天是為了包含週五到週一的狀況
     intra = yf.download(tickers, period="5d", interval="1m", prepost=True, progress=False, auto_adjust=True, threads=True)
-    
     return data, intra
 
 def calculate_metrics(ticker, df_daily, df_intra, vix_val):
-    """計算所有欄位所需的數值"""
     try:
         # 強制轉數值
         for c in ['Open', 'High', 'Low', 'Close', 'Volume']:
-            df_daily[c] = pd.to_numeric(df_daily[c], errors='coerce')
+            if c in df_daily.columns:
+                df_daily[c] = pd.to_numeric(df_daily[c], errors='coerce')
         
         df_daily = df_daily.dropna()
         if len(df_daily) < 20: return None
 
         prev_close = float(df_daily['Close'].iloc[-1])
         
-        # 取得即時價格 (Intraday Last) & 盤前高點 (Pre-Market High)
+        # 取得即時價格 (Intraday Last) & 盤前高點
         curr_price = prev_close
         pre_high = prev_close
         
-        if ticker in df_intra.columns.levels[1]: # MultiIndex check
-            df_m = df_intra.xs(ticker, axis=1, level=1).dropna()
+        # 處理 Intraday Data (抓取最新價格)
+        if isinstance(df_intra.columns, pd.MultiIndex):
+            # 檢查 ticker 是否在 columns level 1 中
+            if ticker in df_intra.columns.levels[1]:
+                df_m = df_intra.xs(ticker, axis=1, level=1).dropna()
+                if not df_m.empty:
+                    curr_price = float(df_m['Close'].iloc[-1])
+                    # 抓盤前最高 (近似)
+                    today_mask = df_m.index.date == df_m.index[-1].date()
+                    if any(today_mask):
+                        pre_high = float(df_m.loc[today_mask, 'High'].max())
+                    else:
+                        pre_high = curr_price
+        else:
+            # 單一 ticker 情況
+            df_m = df_intra.dropna()
             if not df_m.empty:
                 curr_price = float(df_m['Close'].iloc[-1])
-                # 簡單抓當日最高當作 Pre-High (近似)
                 today_mask = df_m.index.date == df_m.index[-1].date()
                 if any(today_mask):
                     pre_high = float(df_m.loc[today_mask, 'High'].max())
                 else:
                     pre_high = curr_price
 
-        # 1. 基礎指標
+        # 計算 Gap %
         gap_pct = (curr_price - prev_close) / prev_close
+        
+        # 技術指標
         atr = ta.atr(df_daily['High'], df_daily['Low'], df_daily['Close'], length=14).iloc[-1]
         atr_pct = atr / prev_close
-        
-        # Fade% = (High - Curr) / High (僅在 Gap Up 時有意義，但也算出數值)
-        fade_pct = 0.0
-        if pre_high > 0:
-            fade_pct = (pre_high - curr_price) / pre_high
-
-        # 2. AI 特徵 (Exp-07)
         rsi = ta.rsi(df_daily['Close'], length=14).iloc[-1]
         
-        vol_ma20 = df_daily['Volume'].rolling(20).mean().iloc[-2] # T-1 的 MA
+        # AI 特徵準備
+        vol_ma20 = df_daily['Volume'].rolling(20).mean().iloc[-2]
         vol_last = df_daily['Volume'].iloc[-1]
         vol_ratio = vol_last / vol_ma20 if vol_ma20 > 0 else 1.0
         
@@ -124,9 +154,8 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
             'price': curr_price,
             'prev_close': prev_close,
             'gap_pct': gap_pct,
-            'fade_pct': fade_pct,
-            'atr_pct': atr_pct,
-            'features': features
+            'features': features,
+            'atr_pct': atr_pct
         }
     except Exception as e:
         return None
@@ -134,43 +163,44 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
 # --- 主程式 ---
 
 def generate_report():
-    print(f">>> V6.1 Gap Strategy Dashboard (Holding Monitor)")
+    print(f"\n>>> V6.2 Daily Gap & Dip Scanner (Union Mode)")
+    print(f">>> Target: Holdings + Asset Pool (Threshold: Sell > {GAP_THRESHOLD:.1%}, Buy < -{DIP_THRESHOLD:.1%})")
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
-    # 1. 載入模型
+    # 1. 載入模型 (選用)
     ai_model = None
     try:
         if os.path.exists(MODEL_PATH):
             ai_model = joblib.load(MODEL_PATH)
+            # print("[Info] AI Model loaded.")
     except: pass
 
-    # 2. 載入清單
-    tickers = load_tickers()
-    print(f"清單概況:\n  - {TARGET_POOL_FILE.replace('.json','')}: {len(tickers)} 檔")
+    # 2. 載入清單 (Union)
+    tickers, tags_map = load_tickers_and_tags()
     
-    cal_status = get_calendar_status()
-    print(f"\n[Market Context]\n  📅 Calendar: {cal_status}")
-    
+    if not tickers:
+        print("[Error] No tickers found.")
+        return
+
+    print(f"Scanning {len(tickers)} tickers...")
     curr_vix = get_current_vix()
     
     # 3. 下載數據
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在下載 {len(tickers)} 檔股票數據...")
     daily_data, intra_data = download_data(tickers)
     
-    # 4. 處理 Single/Multi Index
+    # 4. 處理數據格式
     if isinstance(daily_data.columns, pd.MultiIndex):
         daily_data = daily_data.stack(level=1, future_stack=True).rename_axis(['Date', 'Ticker']).reset_index()
     else:
         daily_data['Ticker'] = tickers[0]
         daily_data = daily_data.reset_index()
 
-    # 轉成 Dict 方便存取
     daily_map = {t: g.set_index('Date') for t, g in daily_data.groupby('Ticker')}
     
     results = []
     
-    # 5. 計算 Loop
+    # 5. 計算訊號
     for t in tickers:
         if t not in daily_map: continue
         
@@ -178,69 +208,89 @@ def generate_report():
         if not metrics: continue
         
         gap = metrics['gap_pct']
-        threshold = GAP_THRESHOLD # 預設 0.5%
+        price = metrics['price']
         
-        # [新增] 計算 Gap Up / Gap Down 的觸發價格
-        prev_close = metrics['prev_close']
-        gap_up_px = prev_close * (1 + threshold)
-        gap_down_px = prev_close * (1 - threshold)
+        # --- 核心策略邏輯 V6.2 ---
+        status = "Flat"
+        action = "WAIT"
         
-        # 決定 Status
-        status = "Watching"
-        if gap > threshold: status = "🔴 GAP UP"
-        elif gap < -threshold: status = "🟢 GAP DOWN"
-        elif abs(gap) < 0.002: status = "Flat"
+        if gap > GAP_THRESHOLD: 
+            status = "🔴 GAP UP"
+            action = "SELL/TRIM"
+        elif gap < -DIP_THRESHOLD: # Gap < -3.0%
+            status = "🟢 BUY DIP"
+            action = "BUY OPEN"
+        elif gap < -GAP_THRESHOLD:
+            status = "🟡 GAP DOWN"
+            action = "HOLD"
+        else:
+            status = "⚪ Flat"
+            action = "-"
         
-        # AI Predict (僅在有訊號時跑，或者全部跑也可以，這裡為了填表全部跑)
-        ai_prob_str = "N/A"
-        ai_dec = ""
-        
-        if ai_model and abs(gap) > 0.003: # 只對稍有波動的跑 AI
+        # AI 預測 (輔助 Sell 決策，目前 AI 針對 Gap Up 訓練)
+        ai_prob_str = "-"
+        if ai_model and abs(gap) > 0.003:
             try:
                 prob = ai_model.predict_proba(metrics['features'])[0][1]
                 ai_prob_str = f"{prob:.0%}"
-                if prob > AI_CONFIDENCE_LV:
-                    ai_dec = "GO"
-                else:
-                    ai_dec = "SKIP"
             except: pass
-            
+        
+        # 標籤處理
+        t_tags = tags_map.get(t, set())
+        is_held = 'Held' in t_tags
+        # 若不是庫存，顯示空白或 ASSET，減少視覺干擾
+        tag_str = "[HOLD]" if is_held else "" 
+        
         results.append({
             'Ticker': t,
-            'Cat': 'A', # 假設 Holding 都是 Asset
+            'Tag': tag_str,
             'Gap%': gap,
-            'Thres%': threshold,
-            'GapUpPx': gap_up_px,    # 新增
-            'GapDnPx': gap_down_px,  # 新增
-            'Fade%': metrics['fade_pct'],
-            'ATR%': metrics['atr_pct'],
-            'Price': metrics['price'],
+            'Price': price,
             'Status': status,
-            'AI Prob': ai_prob_str,
-            'Decision': ai_dec
+            'Action': action,
+            'AI_Prob': ai_prob_str,
+            'ATR%': metrics['atr_pct']
         })
 
-    # 6. 排序與列印
+    # 6. 排序與過濾
+    # 排序邏輯：Gap 越大排越上面 (Gap Up)，Gap 越小排越下面 (Deep Dip)
     results.sort(key=lambda x: x['Gap%'], reverse=True)
     
-    print("\n" + "=" * 115)
-    # [調整] 格式化字串，將 Thres% 與 TrigPx 替換為 GapUp / GapDn
-    # 為了版面整齊，這裡適度調整了寬度
-    header = f"{'Ticker':<6} {'Gap%':>7} {'Price':>8} {'GapUp':>8} {'GapDn':>8} {'Fade%':>6} {'ATR%':>5} {'Status':<12} {'AI Prob':>7} {'Decision':<8}"
+    print("\n" + "=" * 95)
+    header = f"{'Ticker':<8} {'Tag':<6} {'Gap%':>8} {'Price':>10} {'Status':<12} {'Action':<10} {'AI Prob':>8} {'ATR%':>6}"
     print(header)
-    print("-" * 115)
+    print("-" * 95)
+    
+    significant_signals = 0
     
     for r in results:
-        row_str = f"{r['Ticker']:<6} {r['Gap%']*100:>6.2f}% {r['Price']:>8.2f} " \
-                  f"{r['GapUpPx']:>8.2f} {r['GapDnPx']:>8.2f} " \
-                  f"{r['Fade%']*100:>5.2f}% {r['ATR%']*100:>4.1f}% " \
-                  f"{r['Status']:<12} {r['AI Prob']:>7} {r['Decision']:<8}"
-        print(row_str)
+        # [修改] 移除過濾器，顯示所有結果
+        # if abs(r['Gap%']) < 0.005: continue
+            
+        significant_signals += 1
         
-    print("=" * 115)
+        # 視覺提示 (Alert Markers)
+        marker = ""
+        
+        # 情況 A: 發現新的抄底機會 (Buy Dip)
+        if "BUY DIP" in r['Status']: 
+            marker = " <--- 🟢 BUY OPPORTUNITY"
+        
+        # 情況 B: 持股出現 Gap Up (要賣)
+        if "[HOLD]" in r['Tag'] and "GAP UP" in r['Status']: 
+            marker = " <--- 🔴 SELL SIGNAL"
+        
+        # 情況 C: 持股大跌 (可能加碼)
+        if "[HOLD]" in r['Tag'] and "BUY DIP" in r['Status']:
+            marker = " <--- 🟢 ADD POSITION"
+
+        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Gap%']*100:>7.2f}% {r['Price']:>10.2f} {r['Status']:<12} {r['Action']:<10} {r['AI_Prob']:>8} {r['ATR%']*100:>5.1f}%{marker}")
+        
+    print("=" * 95)
+    print(f"Total Scanned: {len(results)}")
     
     # 存檔
-    csv_path = os.path.join(OUTPUT_DIR, f'holding_monitor_{datetime.now().strftime("%Y%m%d")}.csv')
+    csv_path = os.path.join(OUTPUT_DIR, f'daily_signals_{datetime.now().strftime("%Y%m%d")}.csv')
     pd.DataFrame(results).to_csv(csv_path, index=False)
     print(f"\n[Saved] {csv_path}")
 
