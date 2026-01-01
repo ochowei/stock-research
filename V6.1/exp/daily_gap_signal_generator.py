@@ -29,7 +29,7 @@ ASSET_POOL_FILE = '2025_final_asset_pool.json'
 HOLDING_POOL_FILE = '2025_holding_asset_pool.json'
 
 # 策略參數
-GAP_THRESHOLD = 0.005      # 0.5% (Gap Up 賣出門檻)
+GAP_THRESHOLD = 0.02       # 2.0% (Gap Up 賣出門檻) [修改處]
 DIP_THRESHOLD = 0.03       # 3.0% (Buy Dip 買進門檻 - 取絕對值)
 AI_CONFIDENCE_LV = 0.50    # AI 信心門檻
 
