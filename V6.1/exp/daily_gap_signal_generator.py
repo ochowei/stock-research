@@ -29,7 +29,8 @@ ASSET_POOL_FILE = '2025_final_asset_pool.json'
 HOLDING_POOL_FILE = '2025_holding_asset_pool.json'
 
 # 策略參數
-GAP_THRESHOLD = 0.02       # 2.0% (Gap Up 賣出門檻) [修改處]
+GAP_THRESHOLD = 0.005      # 0.5% (Gap Up 賣出門檻) [恢復原值]
+RIP_THRESHOLD = 0.03       # 3.0% (Sell Rip 賣出門檻 - 新增，與 Dip 對稱)
 DIP_THRESHOLD = 0.03       # 3.0% (Buy Dip 買進門檻 - 取絕對值)
 AI_CONFIDENCE_LV = 0.50    # AI 信心門檻
 
@@ -164,7 +165,8 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
 
 def generate_report():
     print(f"\n>>> V6.2 Daily Gap & Dip Scanner (Union Mode)")
-    print(f">>> Target: Holdings + Asset Pool (Threshold: Sell > {GAP_THRESHOLD:.1%}, Buy < -{DIP_THRESHOLD:.1%})")
+    print(f">>> Target: Holdings + Asset Pool")
+    print(f">>> Thresholds: Sell Rip > {RIP_THRESHOLD:.1%}, Gap Up > {GAP_THRESHOLD:.1%}, Buy Dip < -{DIP_THRESHOLD:.1%}")
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
@@ -214,7 +216,10 @@ def generate_report():
         status = "Flat"
         action = "WAIT"
         
-        if gap > GAP_THRESHOLD: 
+        if gap > RIP_THRESHOLD:  # [新增] Gap > 3.0%
+            status = "🔴 SELL RIP"
+            action = "STRONG SELL"
+        elif gap > GAP_THRESHOLD: # Gap > 0.5%
             status = "🔴 GAP UP"
             action = "SELL/TRIM"
         elif gap < -DIP_THRESHOLD: # Gap < -3.0%
@@ -253,7 +258,7 @@ def generate_report():
         })
 
     # 6. 排序與過濾
-    # 排序邏輯：Gap 越大排越上面 (Gap Up)，Gap 越小排越下面 (Deep Dip)
+    # 排序邏輯：Gap 越大排越上面 (Gap Up / Sell Rip)，Gap 越小排越下面 (Deep Dip)
     results.sort(key=lambda x: x['Gap%'], reverse=True)
     
     print("\n" + "=" * 95)
@@ -276,8 +281,8 @@ def generate_report():
         if "BUY DIP" in r['Status']: 
             marker = " <--- 🟢 BUY OPPORTUNITY"
         
-        # 情況 B: 持股出現 Gap Up (要賣)
-        if "[HOLD]" in r['Tag'] and "GAP UP" in r['Status']: 
+        # 情況 B: 持股出現 Gap Up 或 Sell Rip (要賣)
+        if "[HOLD]" in r['Tag'] and ("GAP UP" in r['Status'] or "SELL RIP" in r['Status']): 
             marker = " <--- 🔴 SELL SIGNAL"
         
         # 情況 C: 持股大跌 (可能加碼)
