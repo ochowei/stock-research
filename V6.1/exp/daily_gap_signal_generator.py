@@ -21,9 +21,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCE_DIR = os.path.join(BASE_DIR, '..', 'resource') 
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 
-# [變更] 模型路徑設定 (雙模型)
+# [變更] 模型路徑設定 (三模型)
 SELL_MODEL_PATH = os.path.join(OUTPUT_DIR, 'exp_07_model.joblib')
-MOM_MODEL_PATH = os.path.join(OUTPUT_DIR, 'momentum_model.joblib')  # 新增 Momentum 模型
+MOM_MODEL_PATH = os.path.join(OUTPUT_DIR, 'momentum_model.joblib')
+DIP_MODEL_PATH = os.path.join(OUTPUT_DIR, 'dip_model.joblib')  # [新增] Dip 模型路徑
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -36,7 +37,8 @@ GAP_THRESHOLD = 0.005      # 0.5% (Gap Up 賣出門檻)
 RIP_THRESHOLD = 0.03       # 3.0% (Sell Rip 賣出門檻)
 DIP_THRESHOLD = 0.03       # 3.0% (Buy Dip 買進門檻 - 取絕對值)
 AI_CONFIDENCE_LV = 0.50    # Sell AI 信心門檻
-MOMENTUM_THRESHOLD = 0.53  # [新增] Momentum AI 信心門檻 (53%)
+MOMENTUM_THRESHOLD = 0.53  # Momentum AI 信心門檻 (53%)
+DIP_CONFIDENCE_LV = 0.50   # [新增] Dip AI 信心門檻
 
 # --- 工具函數 ---
 
@@ -152,8 +154,16 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
         vol_last = df_daily['Volume'].iloc[-1]
         vol_ratio = vol_last / vol_ma20 if vol_ma20 > 0 else 1.0
         
-        features = pd.DataFrame([[rsi, atr_pct, vol_ratio, gap_pct, vix_val]], 
-                                columns=['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX'])
+        # [新增] Dist_MA20 (乖離率) 計算 - 為了 Dip Model
+        # 邏輯：模型訓練時使用 (MA19_Prev * 19 + Open) / 20 作為當日模擬 MA20
+        # 這裡我們用 curr_price 代替 Open (即時模擬)
+        ma19_prev = df_daily['Close'].tail(19).mean() # 取最後 19 天的收盤平均
+        ma20_sim = (ma19_prev * 19 + curr_price) / 20
+        dist_ma20 = (curr_price / ma20_sim) - 1
+
+        # [變更] 加入 Dist_MA20 到特徵 DataFrame (共 6 個特徵)
+        features = pd.DataFrame([[rsi, atr_pct, vol_ratio, gap_pct, vix_val, dist_ma20]], 
+                                columns=['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX', 'Dist_MA20'])
         
         return {
             'price': curr_price,
@@ -168,16 +178,17 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
 # --- 主程式 ---
 
 def generate_report():
-    print(f"\n>>> V6.2 Daily Gap & Dip Scanner (Dual-Model Enhanced)")
+    print(f"\n>>> V6.3 Daily Gap & Dip Scanner (Tri-Model Enhanced)")
     print(f">>> Target: Holdings + Asset Pool")
     print(f">>> Thresholds: Sell Rip > {RIP_THRESHOLD:.1%}, Gap Up > {GAP_THRESHOLD:.1%}, Buy Dip < -{DIP_THRESHOLD:.1%}")
-    print(f">>> Momentum Threshold: {MOMENTUM_THRESHOLD:.0%}")
+    print(f">>> AI Thresholds: Mom > {MOMENTUM_THRESHOLD:.0%}, Dip > {DIP_CONFIDENCE_LV:.0%}")
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
-    # 1. 載入模型 (雙模型)
+    # 1. 載入模型 (三模型)
     sell_model = None
     mom_model = None
+    dip_model = None
     
     try:
         if os.path.exists(SELL_MODEL_PATH):
@@ -192,6 +203,13 @@ def generate_report():
             # print("[Info] Momentum Model loaded.")
     except Exception as e:
         print(f"[Warning] Failed to load Momentum Model: {e}")
+
+    try:
+        if os.path.exists(DIP_MODEL_PATH):
+            dip_model = joblib.load(DIP_MODEL_PATH)
+            # print("[Info] Dip Model loaded.")
+    except Exception as e:
+        print(f"[Warning] Failed to load Dip Model: {e}")
 
     # 2. 載入清單 (Union)
     tickers, tags_map = load_tickers_and_tags()
@@ -226,27 +244,39 @@ def generate_report():
         
         gap = metrics['gap_pct']
         price = metrics['price']
+        feats = metrics['features']
         
         # --- AI 預測 ---
-        # 取得 Sell Model 機率
+        # 取得 Sell Model 機率 (注意：舊模型只需前 5 個特徵)
         sell_prob_str = "-"
-        sell_prob = 0.0
         if sell_model:
             try:
-                sell_prob = sell_model.predict_proba(metrics['features'])[0][1]
+                # 只取前 5 個欄位餵給 Sell Model
+                sell_prob = sell_model.predict_proba(feats.iloc[:, :5])[0][1]
                 sell_prob_str = f"{sell_prob:.0%}"
             except: pass
             
-        # [新增] 取得 Momentum Model 機率
+        # 取得 Momentum Model 機率 (注意：舊模型只需前 5 個特徵)
         mom_prob_str = "-"
         mom_prob = 0.0
         if mom_model:
             try:
-                mom_prob = mom_model.predict_proba(metrics['features'])[0][1]
+                # 只取前 5 個欄位餵給 Mom Model
+                mom_prob = mom_model.predict_proba(feats.iloc[:, :5])[0][1]
                 mom_prob_str = f"{mom_prob:.0%}"
             except: pass
 
-        # --- 核心策略邏輯 V6.2 (升級版) ---
+        # [新增] 取得 Dip Model 機率 (使用完整 6 個特徵)
+        dip_prob_str = "-"
+        dip_prob = 0.0
+        if dip_model:
+            try:
+                # Dip Model 需要包含 Dist_MA20
+                dip_prob = dip_model.predict_proba(feats)[0][1]
+                dip_prob_str = f"{dip_prob:.0%}"
+            except: pass
+
+        # --- 核心策略邏輯 V6.3 (含 Dip) ---
         status = "Flat"
         action = "WAIT"
         
@@ -269,8 +299,14 @@ def generate_report():
                 action = "SELL/TRIM"
                 
         elif gap < -DIP_THRESHOLD: # Gap < -3.0% (Buy Dip)
-            status = "🟢 BUY DIP"
-            action = "BUY OPEN"
+            # [邏輯升級] 檢查 Dip Model 信心
+            if dip_prob > DIP_CONFIDENCE_LV:
+                status = "🟢 SMART DIP"
+                action = "BUY OPEN"
+            else:
+                status = "🔵 WEAK DIP"
+                action = "WATCH"
+                
         elif gap < -GAP_THRESHOLD:
             status = "🟡 GAP DOWN"
             action = "HOLD"
@@ -291,8 +327,9 @@ def generate_report():
             'Price': price,
             'Status': status,
             'Action': action,
-            'Sell_Prob': sell_prob_str, # 原 AI_Prob
-            'Mom_Prob': mom_prob_str,   # [新增]
+            'Sell%': sell_prob_str, 
+            'Mom%': mom_prob_str,
+            'Dip%': dip_prob_str,   # [新增]
             'ATR%': metrics['atr_pct']
         })
 
@@ -300,11 +337,11 @@ def generate_report():
     # 排序邏輯：Gap 越大排越上面 (Gap Up / Sell Rip)，Gap 越小排越下面 (Deep Dip)
     results.sort(key=lambda x: x['Gap%'], reverse=True)
     
-    print("\n" + "=" * 105)
-    # [變更] 新增 Mom% 欄位
-    header = f"{'Ticker':<8} {'Tag':<6} {'Gap%':>8} {'Price':>10} {'Status':<12} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'ATR%':>6}"
+    print("\n" + "=" * 115)
+    # [變更] 新增 Dip% 欄位，調整寬度
+    header = f"{'Ticker':<8} {'Tag':<6} {'Gap%':>8} {'Price':>10} {'Status':<12} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6}"
     print(header)
-    print("-" * 105)
+    print("-" * 115)
     
     significant_signals = 0
     
@@ -315,8 +352,8 @@ def generate_report():
         marker = ""
         
         # 情況 A: 發現新的抄底機會 (Buy Dip)
-        if "BUY DIP" in r['Status']: 
-            marker = " <--- 🟢 BUY OPPORTUNITY"
+        if "SMART DIP" in r['Status']: 
+            marker = " <--- 🟢 AI APPROVED BUY"
         
         # 情況 B: 持股出現 Gap Up 或 Sell Rip (要賣)
         # 排除 ROCKET/MOMENTUM 狀態
@@ -328,12 +365,12 @@ def generate_report():
              marker = " <--- 🔥 HIGH MOMENTUM"
         
         # 情況 D: 持股大跌 (可能加碼)
-        if "[HOLD]" in r['Tag'] and "BUY DIP" in r['Status']:
+        if "[HOLD]" in r['Tag'] and "SMART DIP" in r['Status']:
             marker = " <--- 🟢 ADD POSITION"
 
-        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Gap%']*100:>7.2f}% {r['Price']:>10.2f} {r['Status']:<12} {r['Action']:<12} {r['Sell_Prob']:>6} {r['Mom_Prob']:>6} {r['ATR%']*100:>5.1f}%{marker}")
+        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Gap%']*100:>7.2f}% {r['Price']:>10.2f} {r['Status']:<12} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}%{marker}")
         
-    print("=" * 105)
+    print("=" * 115)
     print(f"Total Scanned: {len(results)}")
     
     # 存檔
