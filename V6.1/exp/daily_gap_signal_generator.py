@@ -94,12 +94,49 @@ def get_current_vix():
     except:
         return 20.0
 
-def download_data(tickers):
-    # 下載日線 (計算 ATR, RSI)
-    data = yf.download(tickers, period="3mo", interval="1d", progress=False, auto_adjust=True, threads=True)
-    # 下載盤前/盤中 (計算 Gap) - 這裡抓 5 天是為了包含週五到週一的狀況
-    intra = yf.download(tickers, period="5d", interval="1m", prepost=True, progress=False, auto_adjust=True, threads=True)
-    return data, intra
+def get_calendar_status():
+    """
+    [新增] 判斷今日市場日曆狀態 (週五/週末效應)
+    """
+    try:
+        dt = datetime.now()
+        # 0=Mon, 4=Fri, 5=Sat, 6=Sun
+        if dt.weekday() == 4:
+            return "Friday (Weekend ETH) ⚠️"
+        elif dt.weekday() >= 5:
+            return "Weekend (Market Closed)"
+        else:
+            return "Normal (一般日)"
+    except:
+        return "Unknown"
+
+def download_data(tickers, max_retries=3):
+    """
+    [修改] 加入 Retry 機制，但保留原本參數設定
+    """
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                print(f"Retrying download (Attempt {attempt+1}/{max_retries})...")
+            
+            # 下載日線 (計算 ATR, RSI)
+            data = yf.download(tickers, period="3mo", interval="1d", progress=False, auto_adjust=True, threads=True)
+            # 下載盤前/盤中 (計算 Gap) - 這裡抓 5 天是為了包含週五到週一的狀況
+            intra = yf.download(tickers, period="5d", interval="1m", prepost=True, progress=False, auto_adjust=True, threads=True)
+            
+            # 簡單檢查是否完全空值
+            if not data.empty and not intra.empty:
+                return data, intra
+            else:
+                print(f"[Warning] Downloaded data is empty. Waiting...")
+                time.sleep(2)
+                
+        except Exception as e:
+            print(f"[Error] Download failed: {e}")
+            time.sleep(2)
+            
+    print("[Error] Max retries reached. Returning empty data.")
+    return pd.DataFrame(), pd.DataFrame()
 
 def calculate_metrics(ticker, df_daily, df_intra, vix_val):
     try:
@@ -178,10 +215,15 @@ def calculate_metrics(ticker, df_daily, df_intra, vix_val):
 # --- 主程式 ---
 
 def generate_report():
+    # 0. 取得日曆狀態 [新增]
+    cal_status = get_calendar_status()
+    is_friday = "Friday" in cal_status
+
     print(f"\n>>> V6.3 Daily Gap & Dip Scanner (Tri-Model Enhanced)")
     print(f">>> Target: Holdings + Asset Pool")
     print(f">>> Thresholds: Sell Rip > {RIP_THRESHOLD:.1%}, Gap Up > {GAP_THRESHOLD:.1%}, Buy Dip < -{DIP_THRESHOLD:.1%}")
     print(f">>> AI Thresholds: Mom > {MOMENTUM_THRESHOLD:.0%}, Dip > {DIP_CONFIDENCE_LV:.0%}")
+    print(f">>> [Market Context] 📅 Calendar: {cal_status}") # [新增]
     print(f">>> Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 60)
     
@@ -221,23 +263,33 @@ def generate_report():
     print(f"Scanning {len(tickers)} tickers...")
     curr_vix = get_current_vix()
     
-    # 3. 下載數據
+    # 3. 下載數據 (含 Retry)
     daily_data, intra_data = download_data(tickers)
     
-    # 4. 處理數據格式
-    if isinstance(daily_data.columns, pd.MultiIndex):
-        daily_data = daily_data.stack(level=1, future_stack=True).rename_axis(['Date', 'Ticker']).reset_index()
-    else:
-        daily_data['Ticker'] = tickers[0]
-        daily_data = daily_data.reset_index()
+    if daily_data.empty:
+        print("[Critical] Failed to download daily data for all tickers.")
+        return
 
-    daily_map = {t: g.set_index('Date') for t, g in daily_data.groupby('Ticker')}
+    # 4. 處理數據格式
+    try:
+        if isinstance(daily_data.columns, pd.MultiIndex):
+            daily_data = daily_data.stack(level=1, future_stack=True).rename_axis(['Date', 'Ticker']).reset_index()
+        else:
+            daily_data['Ticker'] = tickers[0]
+            daily_data = daily_data.reset_index()
+
+        daily_map = {t: g.set_index('Date') for t, g in daily_data.groupby('Ticker')}
+    except Exception as e:
+        print(f"[Error] Data formatting error: {e}")
+        return
     
     results = []
     
     # 5. 計算訊號
     for t in tickers:
-        if t not in daily_map: continue
+        # [修改] 略過下載失敗的標的 (Retry 機制的一環)
+        if t not in daily_map: 
+            continue
         
         metrics = calculate_metrics(t, daily_map[t], intra_data, curr_vix)
         if not metrics: continue
@@ -288,6 +340,10 @@ def generate_report():
             else:
                 status = "🔴 SELL RIP"
                 action = "STRONG SELL"
+                # [新增] 週五保護
+                if is_friday:
+                    status += "(ETH)"
+                    action = "TRIM ONLY"
                 
         elif gap > GAP_THRESHOLD: # Gap > 0.5% (Gap Up)
             # [邏輯升級] 檢查動能
@@ -297,12 +353,18 @@ def generate_report():
             else:
                 status = "🔴 GAP UP"
                 action = "SELL/TRIM"
+                # [新增] 週五保護
+                if is_friday:
+                    status += "(ETH)"
                 
         elif gap < -DIP_THRESHOLD: # Gap < -3.0% (Buy Dip)
             # [邏輯升級] 檢查 Dip Model 信心
             if dip_prob > DIP_CONFIDENCE_LV:
                 status = "🟢 SMART DIP"
                 action = "BUY OPEN"
+                # [新增] 週五提示
+                if is_friday:
+                    status += " (WKD)"
             else:
                 status = "🔵 WEAK DIP"
                 action = "WATCH"
@@ -339,7 +401,8 @@ def generate_report():
     
     print("\n" + "=" * 115)
     # [變更] 新增 Dip% 欄位，調整寬度
-    header = f"{'Ticker':<8} {'Tag':<6} {'Gap%':>8} {'Price':>10} {'Status':<12} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6}"
+    # 注意: Status 寬度調大以容納 (ETH) 字串
+    header = f"{'Ticker':<8} {'Tag':<6} {'Gap%':>8} {'Price':>10} {'Status':<15} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6}"
     print(header)
     print("-" * 115)
     
@@ -359,6 +422,9 @@ def generate_report():
         # 排除 ROCKET/MOMENTUM 狀態
         if "[HOLD]" in r['Tag'] and ("GAP UP" in r['Status'] or "SELL RIP" in r['Status']): 
             marker = " <--- 🔴 SELL SIGNAL"
+            # [新增] 週五風險提示
+            if is_friday and "SELL RIP" in r['Status']:
+                marker = " <--- ⚠️ SHORT RISK (FRI)"
             
         # 情況 C: 強勢股續抱提示
         if "ROCKET" in r['Status'] or "MOMENTUM" in r['Status']:
@@ -368,7 +434,7 @@ def generate_report():
         if "[HOLD]" in r['Tag'] and "SMART DIP" in r['Status']:
             marker = " <--- 🟢 ADD POSITION"
 
-        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Gap%']*100:>7.2f}% {r['Price']:>10.2f} {r['Status']:<12} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}%{marker}")
+        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Gap%']*100:>7.2f}% {r['Price']:>10.2f} {r['Status']:<15} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}%{marker}")
         
     print("=" * 115)
     print(f"Total Scanned: {len(results)}")
