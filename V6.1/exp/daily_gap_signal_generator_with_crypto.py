@@ -316,7 +316,7 @@ def generate_report():
     if is_bullish_cal:
         current_gap_threshold = 0.01 # 1.0%
 
-    print(f"\n>>> V6.3 Daily Gap & Dip Scanner (With Crypto Filter)")
+    print(f"\n>>> 6.1.3 Daily Gap & Dip Scanner (With Crypto Filter)")
     print(f">>> Target: Holdings + Asset Pool")
     print(f">>> Thresholds: Sell Rip > {RIP_THRESHOLD:.1%}, Buy Dip < -{DIP_THRESHOLD:.1%}")
     print(f">>> Gap Up Threshold: {current_gap_threshold:.1%} (Default: {DEFAULT_GAP_THRESHOLD:.1%})")
@@ -422,7 +422,7 @@ def generate_report():
                 dip_prob_str = f"{dip_prob:.0%}"
             except: pass
 
-        # --- 核心策略邏輯 V6.3 ---
+        # --- 核心策略邏輯 6.1.3 ---
         status = "Flat"
         action = "WAIT"
         
