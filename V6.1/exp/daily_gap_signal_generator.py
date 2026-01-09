@@ -245,7 +245,7 @@ def generate_report():
     if is_bullish_cal:
         current_gap_threshold = 0.01 # 1.0%
 
-    print(f"\n>>> V6.3 Daily Gap & Dip Scanner (Calendar Aware)")
+    print(f"\n>>> V6.1.3 Daily Gap & Dip Scanner (Calendar Aware)")
     print(f">>> Target: Holdings + Asset Pool")
     print(f">>> Thresholds: Sell Rip > {RIP_THRESHOLD:.1%}, Buy Dip < -{DIP_THRESHOLD:.1%}")
     # 顯示當前使用的 Gap Threshold
@@ -331,7 +331,7 @@ def generate_report():
                 dip_prob_str = f"{dip_prob:.0%}"
             except: pass
 
-        # --- 核心策略邏輯 V6.3 (含 Survey Calendar Logic) ---
+        # --- 核心策略邏輯 V6.1.3 (含 Survey Calendar Logic) ---
         status = "Flat"
         action = "WAIT"
         
