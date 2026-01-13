@@ -42,7 +42,7 @@ jobs:
       # 執行 V6.2 版本的 Daily Gap Signal Generator
       - name: Run Daily Gap Signal Generator
         run: |
-          python V6.2/exp/daily_gap_signal_generator.py
+          python V6.2/exp/daily_gap_signal_generator_v6_2_1.py
 
       # 5. 上傳產出的 CSV 檔案作為 Artifact
       # 下載路徑更新為 V6.2 的輸出目錄
