@@ -4,9 +4,7 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-09: Sell Strategy Logic Refinement**
-*   **Idea:** Re-visit the Profit Taking / Stop Loss logic (currently hardcoded 0.5% Gap, 0.2% Profit).
-*   **Rationale:** Now that the prediction engine is strong, can we optimize the execution logic?
+(Empty)
 
 ## 🟡 Backlog
 
@@ -14,11 +12,19 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## ⚫ Done
 
+### **EXP-09: Sell Strategy Logic Refinement**
+*   **Result:** ✅ Major Success (+33.7% Return).
+*   **Outcome:** Adopt "Hold to Close" (Exit MOC).
+*   **Key Findings:**
+    *   **Hold to Close** achieved **33.7% Total Return** (vs -2.3% for Baseline).
+    *   Baseline strategy (PT 0.2%) "picks pennies in front of steamrollers" (93% WR but negative expectation).
+    *   Intraday Stops (0.5% - 2.0%) degrade performance by exiting trades prematurely during normal volatility.
+
 ### **EXP-08: Production Integration (V6.3 Release)**
 *   **Result:** ✅ Success (System Operational).
 *   **Outcome:** V6.3 Production System deployed.
 *   **Key Findings:**
-    *   Successfully implemented **Heterogeneous Ensemble** (Non-Tech: Base Features, Tech: Base+QQQ).
+    *   Successfully implemented **Heterogeneous Ensemble** (Non-Tech: Base Features, Tech: Base+QQQ features).
     *   Production script `production_daily_plan_v6_3.py` generates valid signals using specific sector models.
     *   Verification confirmed sector-specific routing works as intended.
 

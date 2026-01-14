@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-24: EXP-09 Execution Logic Refinement
+*   **Lesson:** **Patience Pays Off.** The standard execution logic of taking small profits (0.2%) and holding losses to close was detrimental, yielding a negative return (-2.33%). The optimal strategy for the V6.3 models is simply **Hold to Close** (Exit MOC).
+*   **Observation:** The "Hold to Close" strategy achieved a **33.70% Total Return** and **0.37% Average Return**, drastically outperforming any Profit Take/Stop Loss combination. Intraday stops (0.5%-2.0%) reduced performance by cutting trades early during normal volatility.
+*   **Action:** Update the production execution protocol to remove the 0.2% Profit Target. Execute purely on Time (Market Open -> Market Close).
+
 ## 2025-02-23: EXP-08 Production Integration (V6.3 Release)
 *   **Lesson:** **Heterogeneous Execution is Viable.** Successfully deployed a production system that routes tickers to completely different model pipelines (Features + Hyperparameters) based on their sector.
 *   **Observation:** The system correctly identified `DDOG` (Technology) and applied the Tech Model (Base+QQQ features), while applying the Non-Tech Model (Base features) to `ABAT` (Industrials), proving that complex, conditional logic can be reliably automated in the signal generation phase.
