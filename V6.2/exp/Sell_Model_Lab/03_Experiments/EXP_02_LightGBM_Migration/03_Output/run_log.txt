@@ -1,0 +1,48 @@
+[                       0%                       ][*                      2%                       ]  2 of 88 completed[*                      3%                       ]  3 of 88 completed[**                     5%                       ]  4 of 88 completed[***                    6%                       ]  5 of 88 completed[***                    7%                       ]  6 of 88 completed[****                   8%                       ]  7 of 88 completed[****                   9%                       ]  8 of 88 completed[*****                 10%                       ]  9 of 88 completed[*****                 11%                       ]  10 of 88 completed[******                12%                       ]  11 of 88 completed[*******               14%                       ]  12 of 88 completed[*******               15%                       ]  13 of 88 completed[********              16%                       ]  14 of 88 completed[********              17%                       ]  15 of 88 completed[*********             18%                       ]  16 of 88 completed[*********             19%                       ]  17 of 88 completed[**********            20%                       ]  18 of 88 completed[***********           22%                       ]  19 of 88 completed[***********           23%                       ]  20 of 88 completed[************          24%                       ]  21 of 88 completed[************          25%                       ]  22 of 88 completed[************          26%                       ]  23 of 88 completed[*************         27%                       ]  24 of 88 completed[*************         28%                       ]  25 of 88 completed[**************        30%                       ]  26 of 88 completed[***************       31%                       ]  27 of 88 completed[***************       32%                       ]  28 of 88 completed[****************      33%                       ]  29 of 88 completed[****************      34%                       ]  30 of 88 completed[*****************     35%                       ]  31 of 88 completed[*****************     36%                       ]  32 of 88 completed[******************    38%                       ]  33 of 88 completed[*******************   39%                       ]  34 of 88 completed[*******************   40%                       ]  35 of 88 completed[********************  41%                       ]  36 of 88 completed[********************  42%                       ]  37 of 88 completed[********************* 43%                       ]  38 of 88 completed[********************* 44%                       ]  39 of 88 completed[**********************45%                       ]  40 of 88 completed[**********************47%                       ]  41 of 88 completed[**********************48%                       ]  42 of 88 completed[**********************49%                       ]  43 of 88 completed[**********************50%                       ]  44 of 88 completed[**********************51%                       ]  45 of 88 completed[**********************52%                       ]  46 of 88 completed[**********************53%                       ]  47 of 88 completed[**********************55%*                      ]  48 of 88 completed[**********************56%**                     ]  49 of 88 completed[**********************57%**                     ]  50 of 88 completed[**********************58%***                    ]  51 of 88 completed[**********************59%***                    ]  52 of 88 completed[**********************60%****                   ]  53 of 88 completed[**********************61%****                   ]  54 of 88 completed[**********************62%*****                  ]  55 of 88 completed[**********************64%******                 ]  56 of 88 completed[**********************65%******                 ]  57 of 88 completed[**********************66%*******                ]  58 of 88 completed[**********************67%*******                ]  59 of 88 completed[**********************68%********               ]  60 of 88 completed[**********************69%********               ]  61 of 88 completed[**********************70%*********              ]  62 of 88 completed[**********************72%**********             ]  63 of 88 completed[**********************73%**********             ]  64 of 88 completed[**********************74%***********            ]  65 of 88 completed[**********************75%***********            ]  66 of 88 completed[**********************76%***********            ]  67 of 88 completed[**********************77%************           ]  68 of 88 completed[**********************78%************           ]  69 of 88 completed[**********************80%*************          ]  70 of 88 completed[**********************81%**************         ]  71 of 88 completed[**********************82%**************         ]  72 of 88 completed[**********************83%***************        ]  73 of 88 completed[**********************84%***************        ]  74 of 88 completed[**********************85%****************       ]  75 of 88 completed[**********************86%****************       ]  76 of 88 completed[**********************88%*****************      ]  77 of 88 completed[**********************89%******************     ]  78 of 88 completed[**********************90%******************     ]  79 of 88 completed[**********************91%*******************    ]  80 of 88 completed[**********************92%*******************    ]  81 of 88 completed[**********************93%********************   ]  82 of 88 completed[**********************94%********************   ]  83 of 88 completed[**********************95%*********************  ]  84 of 88 completed[**********************97%********************** ]  85 of 88 completed[**********************98%********************** ]  86 of 88 completed[**********************99%***********************]  87 of 88 completed[*********************100%***********************]  88 of 88 completed
+
+7 Failed downloads:
+['HOOD', 'FUBO', 'GLD', 'MGK', 'ABNB', 'VOO']: TypeError("'NoneType' object is not subscriptable")
+['FI']: Timeout('Failed to perform, curl: (28) Connection timed out after 30002 milliseconds. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+=== EXP-02: LightGBM Migration ===
+Downloading data for 88 tickers...
+DEBUG: VIX shape: (2191, 1)
+DEBUG: BTC shape: (2191, 7)
+DEBUG: ETH shape: (2191, 7)
+DEBUG: QQQ shape: (2191, 7)
+  - Stock Data Rows: 181853
+
+Building features...
+Total Valid Gap Signals: 28322
+Training Samples: 17900
+Testing Samples : 10422
+
+Training LightGBM with 13 features...
+
+================================================================================
+EXP-02 RESULTS (OOS 2024-2025)
+================================================================================
+Metric               Baseline             Model (LGBM)         Diff
+--------------------------------------------------------------------------------
+Count                10422                7214
+Win Rate              52.25%               52.23%              -0.02%
+Avg Return            0.124%               0.159%              +0.036%
+Total Return         1288.2%              1150.4%
+--------------------------------------------------------------------------------
+
+[Feature Importance]
+VIX                984
+BTC_Trend          878
+BTC_RSI            867
+Days_From_Start    505
+ATR_Pct            481
+RSI_14             412
+Crypto_Corr        403
+Dist_MA20          374
+Days_To_End        310
+Gap_Pct            269
+Rel_Gap_SPY        265
+Rel_Gap_QQQ        252
+Vol_Ratio            0
+dtype: int32
+
+Model saved to /app/V6.2/exp/Sell_Model_Lab/03_Experiments/EXP_02_LightGBM_Migration/03_Output/exp_02_model.joblib

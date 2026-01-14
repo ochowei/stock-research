@@ -4,13 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-02: LightGBM Migration**
-*   **Hypothesis:** LightGBM may offer better handling of the new feature set and faster training times, potentially reducing overfitting compared to XGBoost.
-*   **Action:**
-    *   Replace `XGBClassifier` with `LGBMClassifier`.
-    *   Tune `num_leaves`, `learning_rate`.
-    *   **Base:** EXP-01 (Crypto Enhanced).
-
 ### **EXP-03: Feature Selection (Ablation Study)**
 *   **Hypothesis:** Some features in the V6.2.2 set (e.g., `Dist_MA20`) might be redundant or noise when combined with Crypto features.
 *   **Action:**
@@ -28,6 +21,15 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 *   **Rationale:** `Rel_Gap_QQQ` was significant. Tech stocks might behave differently on Gaps.
 
 ## ⚫ Done
+
+### **EXP-02: LightGBM Migration**
+*   **Result:** ✅ Success (+0.036% Avg Return, Higher Selectivity).
+*   **Hypothesis:** LightGBM may offer better handling of the new feature set and faster training times, potentially reducing overfitting compared to XGBoost.
+*   **Key Findings:**
+    *   Win Rate remained flat (52.23%), but Avg Return increased significantly.
+    *   LightGBM is more selective (filtered ~30% of trades).
+    *   `Vol_Ratio` showed 0 importance.
+    *   VIX and Crypto features dominate importance.
 
 ### **EXP-01: Crypto Feature Integration**
 *   **Result:** ✅ Success (+2.84% Win Rate, +0.06% Avg Return).
