@@ -4,11 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-04: Regime-Switching Model**
-*   **Idea:** Train separate models for High VIX (>20) vs Low VIX (<20) environments.
-*   **Rationale:** V6.2.2 showed VIX is the #1 feature. Splitting the model might allow it to specialize.
-*   **Adjustment:** Use the "Base" feature set (Gap, RSI, ATR, Vol_Ratio, Dist_MA20) as determined by EXP-03.
-
 ### **EXP-05: Sector-Specific Ensembles**
 *   **Idea:** Train distinct models for Tech (QQQ components) vs Non-Tech.
 *   **Rationale:** `Rel_Gap_QQQ` was significant. Tech stocks might behave differently on Gaps.
@@ -20,6 +15,14 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 *   **Rationale:** EXP-03 showed Base is best. Tuning it might squeeze out more alpha.
 
 ## ⚫ Done
+
+### **EXP-04: Regime-Switching Model**
+*   **Result:** ⏹️ Neutral (Marginal Gain).
+*   **Outcome:** Discard (Too complex for +0.22% WR).
+*   **Key Findings:**
+    *   Regime-System Win Rate: 52.33% (+0.22% vs Global).
+    *   Signals: +2.1% volume.
+    *   **Lesson:** Global model with Base features is robust enough. Explicit VIX splitting adds complexity without significant alpha.
 
 ### **EXP-03: Feature Selection (Ablation Study)**
 *   **Result:** ✅ Success (Simpler is Better).
