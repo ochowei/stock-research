@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-23: EXP-08 Production Integration (V6.3 Release)
+*   **Lesson:** **Heterogeneous Execution is Viable.** Successfully deployed a production system that routes tickers to completely different model pipelines (Features + Hyperparameters) based on their sector.
+*   **Observation:** The system correctly identified `DDOG` (Technology) and applied the Tech Model (Base+QQQ features), while applying the Non-Tech Model (Base features) to `ABAT` (Industrials), proving that complex, conditional logic can be reliably automated in the signal generation phase.
+*   **Action:** Ensure future monitoring checks for "Sector Drift" (e.g., if a ticker changes sector in `yfinance`) and `Sector_Corr` stability, as these are now critical dependencies for the Tech model.
+
 ## 2025-02-21: EXP-07 Tech-Specific Feature Engineering
 *   **Lesson:** **Context is King for Tech.** The Tech sector model, which was previously the "weak link" (49.8% Win Rate), was transformed into a top performer (53.35% Win Rate) by adding sector-specific context (`QQQ` Gap, RSI, MA_Dist).
 *   **Observation:** The top 3 most important features for Tech stocks were *all* QQQ-based features. This proves that individual Tech stocks are heavily driven by the sector's overall sentiment and momentum.
