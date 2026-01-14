@@ -4,23 +4,30 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-03: Feature Selection (Ablation Study)**
-*   **Hypothesis:** Some features in the V6.2.2 set (e.g., `Dist_MA20`) might be redundant or noise when combined with Crypto features.
-*   **Action:**
-    *   Run Recursive Feature Elimination (RFE) or Permutation Importance.
-    *   Test subsets of features: `[Base 5]`, `[Base + TOTM]`, `[Base + Crypto]`, `[All]`.
-
-## 🟡 Backlog
-
 ### **EXP-04: Regime-Switching Model**
 *   **Idea:** Train separate models for High VIX (>20) vs Low VIX (<20) environments.
 *   **Rationale:** V6.2.2 showed VIX is the #1 feature. Splitting the model might allow it to specialize.
+*   **Adjustment:** Use the "Base" feature set (Gap, RSI, ATR, Vol_Ratio, Dist_MA20) as determined by EXP-03.
 
 ### **EXP-05: Sector-Specific Ensembles**
 *   **Idea:** Train distinct models for Tech (QQQ components) vs Non-Tech.
 *   **Rationale:** `Rel_Gap_QQQ` was significant. Tech stocks might behave differently on Gaps.
 
+## 🟡 Backlog
+
+### **EXP-06: Base Feature Hyperparameter Tuning**
+*   **Idea:** Optimize LightGBM hyperparameters for the "Base" feature set.
+*   **Rationale:** EXP-03 showed Base is best. Tuning it might squeeze out more alpha.
+
 ## ⚫ Done
+
+### **EXP-03: Feature Selection (Ablation Study)**
+*   **Result:** ✅ Success (Simpler is Better).
+*   **Winner:** **Base Model (5 Features)** (`Gap_Pct`, `RSI_14`, `ATR_Pct`, `Vol_Ratio`, `Dist_MA20`).
+*   **Key Findings:**
+    *   Base model achieved 51.96% Win Rate vs 50.95% for "All" features.
+    *   Adding Crypto, TOTM, or VIX features reduced performance (overfitting).
+    *   We should proceed with the leaner 5-feature model.
 
 ### **EXP-02: LightGBM Migration**
 *   **Result:** ✅ Success (+0.036% Avg Return, Higher Selectivity).
