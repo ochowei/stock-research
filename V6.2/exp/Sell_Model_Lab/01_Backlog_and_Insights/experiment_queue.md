@@ -4,17 +4,25 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-07: Tech-Specific Feature Engineering**
-*   **Idea:** Investigate features specifically for the Tech model (which underperformed in EXP-05). E.g. NDX Volatility, Semi-conductor Index correlation.
-*   **Rationale:** Tech WR (50.2% in EXP-05, likely similar in EXP-06) is lagging behind Non-Tech. Improving the "weak link" could boost the overall ensemble significantly.
+### **EXP-08: Production Integration (V6.3 Release)**
+*   **Idea:** Consolidate all findings (Sector Ensemble, Base Features, Tuned Params, Tech Features) into a new `production_daily_plan_v6_3.py`.
+*   **Rationale:** We have a solid new baseline (52.2% WR) and a fixed Tech model (53.3% WR). It is time to lock it in.
 
 ## 🟡 Backlog
 
-### **EXP-08: Production Integration (V6.3 Release)**
-*   **Idea:** Consolidate all findings (Sector Ensemble, Base Features, Tuned Params) into a new `production_daily_plan_v6_3.py`.
-*   **Rationale:** We have a solid new baseline (52.2% WR). It is time to lock it in before further experimentation.
+### **EXP-09: Sell Strategy Logic Refinement**
+*   **Idea:** Re-visit the Profit Taking / Stop Loss logic (currently hardcoded 0.5% Gap, 0.2% Profit).
+*   **Rationale:** Now that the prediction engine is strong, can we optimize the execution logic?
 
 ## ⚫ Done
+
+### **EXP-07: Tech-Specific Feature Engineering**
+*   **Result:** ✅ Major Success (+3.55% Win Rate).
+*   **Outcome:** Adopt (Tech Model uses QQQ features).
+*   **Key Findings:**
+    *   Tech Sector moves as a herd. `QQQ` features are the top 3 most important predictors.
+    *   Tech Win Rate improved from 49.8% to **53.35%**.
+    *   Signal count doubled.
 
 ### **EXP-06: Base Feature Hyperparameter Tuning**
 *   **Result:** ✅ Success (+0.54% Win Rate vs Baseline Ensemble).
