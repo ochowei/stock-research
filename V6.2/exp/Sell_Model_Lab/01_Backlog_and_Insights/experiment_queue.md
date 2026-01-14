@@ -4,11 +4,31 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-(Empty)
+### **EXP-10: Crypto-Specific Ensemble (The "Crypto Branch")**
+* **Context:** * **EXP-01** confirmed that `Crypto_Corr` and `BTC_Trend` are top-tier predictors but drastically reduce signal count (high selectivity).
+    * **EXP-03** showed that adding these features globally hurt the general model (overfitting/noise for non-crypto stocks).
+    * **EXP-08** established the "Heterogeneous Ensemble" architecture.
+    * *Current Gap:* Crypto-sensitive stocks (e.g., `COIN`, `MSTR`, `RIOT`) are currently forced into the generic "Tech" or "Non-Tech" pipelines, likely ignoring their primary driver (Bitcoin price action).
+* **Hypothesis:** Creating a dedicated model pipeline for **Crypto-Sensitive Tickers** (using `Base` + `Crypto` features) will outperform the current V6.3 routing for this specific subset.
+* **Plan:**
+    1.  Load tickers from `V6.2/resource/2025_final_crypto_sensitive_pool.json`.
+    2.  Train a dedicated LightGBM model for this pool using the extended feature set (Base + BTC/ETH metrics).
+    3.  Compare performance against the current V6.3 baseline (where they are treated as generic Tech/Non-Tech) using "Hold to Close" execution.
+
+### **EXP-11: Non-Tech Feature Augmentation (SPY Context)**
+* **Context:** * **EXP-07** transformed the "Tech" model from a weak link to a top performer (+3.55% WR) simply by adding `QQQ` (Sector ETF) features.
+    * The current **"Non-Tech"** model (V6.3) still relies on the minimal 5-feature Base set. While robust, it lacks broader market context.
+* **Hypothesis:** Adding `SPY` (S&P 500) features (`Gap`, `RSI`, `MA_Dist`) to the **Non-Tech Model** will provide necessary market context and improve predictive power, similar to the QQQ effect on Tech stocks.
+* **Plan:**
+    1.  Focus on the Non-Tech ticker universe.
+    2.  Engineer `SPY`-based features (aligning with how `QQQ` features were built in EXP-07).
+    3.  Train "Base + SPY" models and compare Win Rate/Avg Return against the current "Base Only" Non-Tech model.
 
 ## 🟡 Backlog
 
-(Empty)
+### **EXP-12: Time-Decay Exit Optimization**
+* **Context:** EXP-09 proved "Hold to Close" beats fixed targets. However, alpha often decays as the day progresses.
+* **Hypothesis:** A dynamic exit based on "Time in Trade" (e.g., exit after 3 hours) or a technical trigger (e.g., cross VWAP) might capture the bulk of the move while reducing exposure to late-day chop.
 
 ## ⚫ Done
 
