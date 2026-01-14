@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-21: EXP-07 Tech-Specific Feature Engineering
+*   **Lesson:** **Context is King for Tech.** The Tech sector model, which was previously the "weak link" (49.8% Win Rate), was transformed into a top performer (53.35% Win Rate) by adding sector-specific context (`QQQ` Gap, RSI, MA_Dist).
+*   **Observation:** The top 3 most important features for Tech stocks were *all* QQQ-based features. This proves that individual Tech stocks are heavily driven by the sector's overall sentiment and momentum.
+*   **Action:** Implement a **Heterogeneous Ensemble** for Production: Use Base Features (5) for Non-Tech, but Base + QQQ Features (9) for Tech.
+
 ## 2025-02-20: EXP-06 Base Feature Hyperparameter Tuning
 *   **Lesson:** **Sectors Have Distinct "Personalities".** The Tech sector model required extreme regularization (Depth=3, Learning Rate=0.01) to perform well, suggesting a low signal-to-noise ratio. In contrast, the Non-Tech sector model thrived with high complexity (Unlimited Depth, Learning Rate=0.02, Leaves=50).
 *   **Observation:** A globally tuned model performed *worse* than the baseline, likely because it tried to find a "middle ground" that was suboptimal for both sectors.
