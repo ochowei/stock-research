@@ -130,7 +130,7 @@ def generate_report():
 
     print(f"\n>>> V6.2 Ultra Daily Gap Scanner (Modularized + Sorted)")
     print(f">>> [Market Context] 📅 Calendar: {cal_status} | VIX: {curr_vix:.1f}")
-    print("-" * 125)
+    print("-" * 135)
     
     # 載入模型
     models = {
@@ -203,17 +203,17 @@ def generate_report():
     results.sort(key=lambda x: (get_sort_priority(x), -abs(x['Gap%'])))
 
     # 定義標題
-    header = f"{'Ticker':<8} {'Tag':<6} {'Regime':<12} {'Gap%':>8} {'Status':<16} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6}"
+    header = f"{'Ticker':<8} {'Tag':<6} {'Regime':<12} {'Gap%':>8} {'Limit':>9} {'Status':<16} {'Action':<12} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6}"
     print(header)
-    print("-" * 125)
+    print("-" * 135)
     
     last_priority = -1
     for r in results:
         curr_priority = get_sort_priority(r)
         if curr_priority != last_priority:
-            if curr_priority == 1: print("-" * 45 + " [ 持有 / 觀察區 ] " + "-" * 62)
-            if curr_priority == 2: print("-" * 45 + " [ 盤整無訊號區 ] " + "-" * 62)
-            if curr_priority == 3: print("-" * 45 + " [ 🛑 趨勢過強禁止區 ] " + "-" * 57)
+            if curr_priority == 1: print("-" * 45 + " [ 持有 / 觀察區 ] " + "-" * 72)
+            if curr_priority == 2: print("-" * 45 + " [ 盤整無訊號區 ] " + "-" * 72)
+            if curr_priority == 3: print("-" * 45 + " [ 🛑 趨勢過強禁止區 ] " + "-" * 67)
             last_priority = curr_priority
 
         marker = ""
@@ -223,9 +223,9 @@ def generate_report():
             marker = " <--- ⚠️ EXIT SIGNAL" if not is_bullish_cal else " <--- ⚠️ EXIT CAUTION (TOTM)"
         elif "ROCKET" in r['Status']: marker = " <--- 🔥 HIGH MOMENTUM"
 
-        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Status']:<16} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}%{marker}")
+        print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Status']:<16} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}%{marker}")
     
-    print("-" * 125)
+    print("-" * 135)
     csv_path = os.path.join(OUTPUT_DIR, f'daily_signals_{datetime.now().strftime("%Y%m%d")}.csv')
     pd.DataFrame(results).to_csv(csv_path, index=False)
     print(f"Total Scanned: {len(results)} | [Saved] {csv_path}")
