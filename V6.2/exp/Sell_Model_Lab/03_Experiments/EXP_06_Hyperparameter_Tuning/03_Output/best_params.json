@@ -1,0 +1,35 @@
+{
+    "Global_Opt": {
+        "subsample": 1.0,
+        "reg_lambda": 1.0,
+        "reg_alpha": 0.5,
+        "num_leaves": 63,
+        "n_estimators": 500,
+        "min_child_samples": 100,
+        "max_depth": -1,
+        "learning_rate": 0.05,
+        "colsample_bytree": 1.0
+    },
+    "Tech_Opt": {
+        "subsample": 1.0,
+        "reg_lambda": 0,
+        "reg_alpha": 0,
+        "num_leaves": 20,
+        "n_estimators": 100,
+        "min_child_samples": 50,
+        "max_depth": 3,
+        "learning_rate": 0.01,
+        "colsample_bytree": 0.6
+    },
+    "NonTech_Opt": {
+        "subsample": 0.8,
+        "reg_lambda": 0.1,
+        "reg_alpha": 0.5,
+        "num_leaves": 50,
+        "n_estimators": 200,
+        "min_child_samples": 100,
+        "max_depth": -1,
+        "learning_rate": 0.02,
+        "colsample_bytree": 1.0
+    }
+}

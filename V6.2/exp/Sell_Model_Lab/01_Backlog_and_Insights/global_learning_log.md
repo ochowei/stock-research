@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-20: EXP-06 Base Feature Hyperparameter Tuning
+*   **Lesson:** **Sectors Have Distinct "Personalities".** The Tech sector model required extreme regularization (Depth=3, Learning Rate=0.01) to perform well, suggesting a low signal-to-noise ratio. In contrast, the Non-Tech sector model thrived with high complexity (Unlimited Depth, Learning Rate=0.02, Leaves=50).
+*   **Observation:** A globally tuned model performed *worse* than the baseline, likely because it tried to find a "middle ground" that was suboptimal for both sectors.
+*   **Action:** When deploying the Sector-Specific Ensemble, do not use a single set of hyperparameters. Hardcode the specific, divergent hyperparameters for Tech vs Non-Tech models to maximize the Ensemble's performance (Win Rate 52.23%).
+
 ## 2025-02-19: EXP-05 Sector-Specific Ensembles
 *   **Lesson:** **Sector Specialization Improves Precision.** Training separate models for Tech (QQQ/Technology) and Non-Tech stocks yielded a +0.82% improvement in Win Rate (52.19% vs 51.37%) and nearly doubled the Average Return (0.15% vs 0.08%) compared to a single Global Model.
 *   **Observation:** The "Non-Tech" model performed exceptionally well (53.3% WR), suggesting that non-tech stocks have more predictable mean-reversion properties in this framework. Tech stocks proved harder to predict (50.2% WR), likely due to different volatility drivers.
