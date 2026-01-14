@@ -4,17 +4,25 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-05: Sector-Specific Ensembles**
-*   **Idea:** Train distinct models for Tech (QQQ components) vs Non-Tech.
-*   **Rationale:** `Rel_Gap_QQQ` was significant. Tech stocks might behave differently on Gaps.
+### **EXP-06: Base Feature Hyperparameter Tuning**
+*   **Idea:** Optimize LightGBM hyperparameters for the "Base" feature set, applied to the new Sector-Specific Ensemble architecture.
+*   **Rationale:** EXP-05 proved the architecture works. EXP-03 proved Base features are best. Now we squeeze alpha via tuning.
 
 ## 🟡 Backlog
 
-### **EXP-06: Base Feature Hyperparameter Tuning**
-*   **Idea:** Optimize LightGBM hyperparameters for the "Base" feature set.
-*   **Rationale:** EXP-03 showed Base is best. Tuning it might squeeze out more alpha.
+### **EXP-07: Tech-Specific Feature Engineering**
+*   **Idea:** Investigate features specifically for the Tech model (which underperformed in EXP-05). E.g. NDX Volatility, Semi-conductor Index correlation.
+*   **Rationale:** Tech WR (50.2%) is lagging behind Non-Tech (53.3%). Improving the "weak link" could boost the overall ensemble significantly.
 
 ## ⚫ Done
+
+### **EXP-05: Sector-Specific Ensembles**
+*   **Result:** ✅ Success (+0.82% Win Rate, +0.07% Avg Return).
+*   **Outcome:** Adopt (Sector Split > Global).
+*   **Key Findings:**
+    *   Ensemble Win Rate: 52.19% vs Global 51.37%.
+    *   Non-Tech stocks perform exceptionally well (53.3% WR).
+    *   Tech stocks are the weak link (50.2% WR).
 
 ### **EXP-04: Regime-Switching Model**
 *   **Result:** ⏹️ Neutral (Marginal Gain).
