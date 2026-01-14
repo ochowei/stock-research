@@ -4,18 +4,26 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-12: Time-Decay Exit Optimization**
-* **Context:** EXP-09 proved "Hold to Close" beats fixed targets. However, alpha often decays as the day progresses.
-* **Hypothesis:** A dynamic exit based on "Time in Trade" (e.g., exit after 3 hours) or a technical trigger (e.g., cross VWAP) might capture the bulk of the move while reducing exposure to late-day chop.
-
-## 🟡 Backlog
-
 ### **EXP-13: Production Deployment (V6.4)**
-* **Context:** We have successfully optimized both Tech (QQQ features, EXP-07) and Non-Tech (SPY features, EXP-11) models.
+* **Context:** We have successfully optimized both Tech (QQQ features, EXP-07) and Non-Tech (SPY features, EXP-11) models. We also confirmed MOC (Hold to Close) is the superior execution strategy (EXP-09, EXP-12).
 * **Hypothesis:** Combining these two new models into the production `production_daily_plan.py` script will deliver the best overall system performance.
 * **Plan:** Update production scripts to use `v6.4_tech_model.joblib` and `v6.4_non_tech_model.joblib`.
 
+## 🟡 Backlog
+
+### **EXP-14: Delayed Entry Optimization**
+* **Context:** EXP-12 showed that trades have a negative return (-0.86%) in the first hour, meaning prices often move against the "Sell" signal initially.
+* **Hypothesis:** Entering the trade 1 hour after Open (or fading the 1H High) might significantly improve the entry price and Win Rate by avoiding the "morning fake-out".
+
 ## ⚫ Done
+
+### **EXP-12: Time-Decay Exit Optimization**
+* **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Retain "Hold to Close" (Market On Close).
+*   **Key Findings:**
+    *   **Hold to Close** (MOC) overwhelmingly outperforms early exits (+31.1% vs +7.8% Total Return).
+    *   **Morning Fake-Out:** The 1H return is negative (-0.86%), meaning the price initially moves UP against the short signal before fading.
+    *   The alpha materializes slowly throughout the day.
 
 ### **EXP-11: Non-Tech Feature Augmentation (SPY Context)**
 *   **Result:** ✅ Success (+0.83% Win Rate).

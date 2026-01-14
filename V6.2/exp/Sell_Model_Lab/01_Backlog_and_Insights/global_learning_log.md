@@ -1,12 +1,18 @@
 # Global Learning Log
 
+## 2026-01-14: EXP-12 Time-Decay Exit Optimization
+*   **Lesson:** **Alpha Does Not Decay Intraday.** The hypothesis that the edge from the Sell Model is a "quick burst" that dissipates after a few hours was decisively rejected.
+*   **Observation:** The "Hold to Close" (Market On Close) strategy yielded a Total Return of **+31.16%**, whereas exiting after 1 hour resulted in a **-0.86%** return. Exiting at any hourly interval (2H, 3H, 4H) significantly underperformed holding to the close.
+*   **Insight:** The negative 1H return suggests a "Morning Fake-Out" pattern where prices initially move against the short signal before reversing later in the day. The edge is a day-long mean reversion/distribution event, not a scalp.
+*   **Action:** Retain "Hold to Close" as the production execution strategy. Investigate "Delayed Entry" (entering after 10:30 AM) to potentially capture the reversal while avoiding the initial drawdown.
+
 ## 2025-02-26: EXP-11 Non-Tech Feature Augmentation (SPY Context)
 *   **Lesson:** **Context Works for Everyone.** Just as QQQ features improved the Tech model, adding SPY features (`Gap`, `RSI`, `Dist_MA20`) to the Non-Tech model significantly improved performance (+0.83% Win Rate, +46% Avg Return).
 *   **Observation:** SPY features became the top 3 most important predictors for Non-Tech stocks, confirming that broad market sentiment is a primary driver for mean reversion, even more so than individual stock technicals.
 *   **Action:** Adopt the "Base + SPY" model for all Non-Tech tickers. This completes the "Contextual Ensemble" vision where every stock is traded with awareness of its relevant sector/market benchmark.
 
 ## 2025-02-25: EXP-10 Crypto-Specific Ensemble
-*   **Lesson:** **Domain Definition is Critical.** The attempt to train a "Crypto" model failed because the "Crypto Sensitive Pool" resource contained non-crypto stocks (e.g., Dutch Bros, Hims).
+*   **Lesson:** **Domain Definition is Critical.** The attempt to train a "Crypto" model failed because the "Crypto Sensitive Pool" resource contained non-crypto stocks (e.g., Dutch Bros, Hims, Trade Desk).
 *   **Observation:** Forcing high-context features (Bitcoin Price Action) onto unrelated assets creates noise that degrades predictive power (Win Rate dropped from 53.98% to 52.66%). However, the model did reduce the average loss per trade, possibly by filtering out bad trades during extreme BTC volatility.
 *   **Action:** Verify and audit asset pools *before* engineering domain-specific features. A feature is only as good as its relevance to the target asset class.
 
