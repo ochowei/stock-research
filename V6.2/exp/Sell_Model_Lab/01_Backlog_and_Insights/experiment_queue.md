@@ -4,17 +4,26 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-06: Base Feature Hyperparameter Tuning**
-*   **Idea:** Optimize LightGBM hyperparameters for the "Base" feature set, applied to the new Sector-Specific Ensemble architecture.
-*   **Rationale:** EXP-05 proved the architecture works. EXP-03 proved Base features are best. Now we squeeze alpha via tuning.
+### **EXP-07: Tech-Specific Feature Engineering**
+*   **Idea:** Investigate features specifically for the Tech model (which underperformed in EXP-05). E.g. NDX Volatility, Semi-conductor Index correlation.
+*   **Rationale:** Tech WR (50.2% in EXP-05, likely similar in EXP-06) is lagging behind Non-Tech. Improving the "weak link" could boost the overall ensemble significantly.
 
 ## 🟡 Backlog
 
-### **EXP-07: Tech-Specific Feature Engineering**
-*   **Idea:** Investigate features specifically for the Tech model (which underperformed in EXP-05). E.g. NDX Volatility, Semi-conductor Index correlation.
-*   **Rationale:** Tech WR (50.2%) is lagging behind Non-Tech (53.3%). Improving the "weak link" could boost the overall ensemble significantly.
+### **EXP-08: Production Integration (V6.3 Release)**
+*   **Idea:** Consolidate all findings (Sector Ensemble, Base Features, Tuned Params) into a new `production_daily_plan_v6_3.py`.
+*   **Rationale:** We have a solid new baseline (52.2% WR). It is time to lock it in before further experimentation.
 
 ## ⚫ Done
+
+### **EXP-06: Base Feature Hyperparameter Tuning**
+*   **Result:** ✅ Success (+0.54% Win Rate vs Baseline Ensemble).
+*   **Outcome:** Adopt (Optimized Sector Ensemble).
+*   **Key Findings:**
+    *   **Ensemble Win Rate: 52.23%**.
+    *   **Tech Sector:** Needs extreme regularization (Depth 3, LR 0.01).
+    *   **Non-Tech Sector:** Supports higher complexity (Unlimited Depth, LR 0.02).
+    *   Global optimization actually hurt performance (overfitting), proving the need for sector-specific tuning.
 
 ### **EXP-05: Sector-Specific Ensembles**
 *   **Result:** ✅ Success (+0.82% Win Rate, +0.07% Avg Return).
