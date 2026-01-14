@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-19: EXP-05 Sector-Specific Ensembles
+*   **Lesson:** **Sector Specialization Improves Precision.** Training separate models for Tech (QQQ/Technology) and Non-Tech stocks yielded a +0.82% improvement in Win Rate (52.19% vs 51.37%) and nearly doubled the Average Return (0.15% vs 0.08%) compared to a single Global Model.
+*   **Observation:** The "Non-Tech" model performed exceptionally well (53.3% WR), suggesting that non-tech stocks have more predictable mean-reversion properties in this framework. Tech stocks proved harder to predict (50.2% WR), likely due to different volatility drivers.
+*   **Action:** Adopt the Sector-Specific Ensemble architecture for the V6.2 production system. This structural change offers significant alpha without increasing feature complexity.
+
 ## 2024-05-26: EXP-04 Regime-Switching Model (High/Low VIX)
 *   **Lesson:** **Regime Splitting Adds Complexity, Not Value.** Training separate models for High VIX (>20) and Low VIX (<=20) environments yielded only a negligible improvement in Win Rate (+0.22%) and Total Return.
 *   **Observation:** The Global model (trained on all data) performed nearly as well as the specialized ensemble. This suggests that the LightGBM model, even with just 5 base features (which includes `ATR_Pct` and `Vol_Ratio`), is capable of learning volatility dynamics internally without needing explicit hard-coded splits.
