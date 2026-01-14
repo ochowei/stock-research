@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-25: EXP-10 Crypto-Specific Ensemble
+*   **Lesson:** **Domain Definition is Critical.** The attempt to train a "Crypto" model failed because the "Crypto Sensitive Pool" resource contained non-crypto stocks (e.g., Dutch Bros, Hims).
+*   **Observation:** Forcing high-context features (Bitcoin Price Action) onto unrelated assets creates noise that degrades predictive power (Win Rate dropped from 53.98% to 52.66%). However, the model did reduce the average loss per trade, possibly by filtering out bad trades during extreme BTC volatility.
+*   **Action:** Verify and audit asset pools *before* engineering domain-specific features. A feature is only as good as its relevance to the target asset class.
+
 ## 2025-02-24: EXP-09 Execution Logic Refinement
 *   **Lesson:** **Patience Pays Off.** The standard execution logic of taking small profits (0.2%) and holding losses to close was detrimental, yielding a negative return (-2.33%). The optimal strategy for the V6.3 models is simply **Hold to Close** (Exit MOC).
 *   **Observation:** The "Hold to Close" strategy achieved a **33.70% Total Return** and **0.37% Average Return**, drastically outperforming any Profit Take/Stop Loss combination. Intraday stops (0.5%-2.0%) reduced performance by cutting trades early during normal volatility.
