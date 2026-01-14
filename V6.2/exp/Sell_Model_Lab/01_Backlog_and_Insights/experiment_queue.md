@@ -4,17 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-10: Crypto-Specific Ensemble (The "Crypto Branch")**
-* **Context:** * **EXP-01** confirmed that `Crypto_Corr` and `BTC_Trend` are top-tier predictors but drastically reduce signal count (high selectivity).
-    * **EXP-03** showed that adding these features globally hurt the general model (overfitting/noise for non-crypto stocks).
-    * **EXP-08** established the "Heterogeneous Ensemble" architecture.
-    * *Current Gap:* Crypto-sensitive stocks (e.g., `COIN`, `MSTR`, `RIOT`) are currently forced into the generic "Tech" or "Non-Tech" pipelines, likely ignoring their primary driver (Bitcoin price action).
-* **Hypothesis:** Creating a dedicated model pipeline for **Crypto-Sensitive Tickers** (using `Base` + `Crypto` features) will outperform the current V6.3 routing for this specific subset.
-* **Plan:**
-    1.  Load tickers from `V6.2/resource/2025_final_crypto_sensitive_pool.json`.
-    2.  Train a dedicated LightGBM model for this pool using the extended feature set (Base + BTC/ETH metrics).
-    3.  Compare performance against the current V6.3 baseline (where they are treated as generic Tech/Non-Tech) using "Hold to Close" execution.
-
 ### **EXP-11: Non-Tech Feature Augmentation (SPY Context)**
 * **Context:** * **EXP-07** transformed the "Tech" model from a weak link to a top performer (+3.55% WR) simply by adding `QQQ` (Sector ETF) features.
     * The current **"Non-Tech"** model (V6.3) still relies on the minimal 5-feature Base set. While robust, it lacks broader market context.
@@ -31,6 +20,15 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 * **Hypothesis:** A dynamic exit based on "Time in Trade" (e.g., exit after 3 hours) or a technical trigger (e.g., cross VWAP) might capture the bulk of the move while reducing exposure to late-day chop.
 
 ## ⚫ Done
+
+### **EXP-10: Crypto-Specific Ensemble (The "Crypto Branch")**
+*   **Result:** ❌ Failed (Hypothesis Rejected, but insight gained).
+*   **Outcome:** Do not adopt current iteration. Revisit with corrected data.
+*   **Key Findings:**
+    *   **Result:** Crypto Model (Base+BTC) had lower Win Rate (52.66% vs 53.98%) but better loss mitigation (-0.06% vs -0.14% Avg Return) compared to Baseline.
+    *   **Root Cause:** The provided "Crypto Sensitive Pool" was contaminated with non-crypto stocks (e.g., Dutch Bros, Hims, Trade Desk). Forcing BTC features on these introduced noise.
+    *   **Feature Importance:** BTC features dominated the model (Top 3), causing it to ignore stock-specific technicals.
+    *   **Action Item:** The Crypto Pool must be rebuilt with pure-play crypto stocks (COIN, MSTR, RIOT) before re-testing.
 
 ### **EXP-09: Sell Strategy Logic Refinement**
 *   **Result:** ✅ Major Success (+33.7% Return).
