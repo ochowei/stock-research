@@ -4,22 +4,26 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-11: Non-Tech Feature Augmentation (SPY Context)**
-* **Context:** * **EXP-07** transformed the "Tech" model from a weak link to a top performer (+3.55% WR) simply by adding `QQQ` (Sector ETF) features.
-    * The current **"Non-Tech"** model (V6.3) still relies on the minimal 5-feature Base set. While robust, it lacks broader market context.
-* **Hypothesis:** Adding `SPY` (S&P 500) features (`Gap`, `RSI`, `MA_Dist`) to the **Non-Tech Model** will provide necessary market context and improve predictive power, similar to the QQQ effect on Tech stocks.
-* **Plan:**
-    1.  Focus on the Non-Tech ticker universe.
-    2.  Engineer `SPY`-based features (aligning with how `QQQ` features were built in EXP-07).
-    3.  Train "Base + SPY" models and compare Win Rate/Avg Return against the current "Base Only" Non-Tech model.
-
-## 🟡 Backlog
-
 ### **EXP-12: Time-Decay Exit Optimization**
 * **Context:** EXP-09 proved "Hold to Close" beats fixed targets. However, alpha often decays as the day progresses.
 * **Hypothesis:** A dynamic exit based on "Time in Trade" (e.g., exit after 3 hours) or a technical trigger (e.g., cross VWAP) might capture the bulk of the move while reducing exposure to late-day chop.
 
+## 🟡 Backlog
+
+### **EXP-13: Production Deployment (V6.4)**
+* **Context:** We have successfully optimized both Tech (QQQ features, EXP-07) and Non-Tech (SPY features, EXP-11) models.
+* **Hypothesis:** Combining these two new models into the production `production_daily_plan.py` script will deliver the best overall system performance.
+* **Plan:** Update production scripts to use `v6.4_tech_model.joblib` and `v6.4_non_tech_model.joblib`.
+
 ## ⚫ Done
+
+### **EXP-11: Non-Tech Feature Augmentation (SPY Context)**
+*   **Result:** ✅ Success (+0.83% Win Rate).
+*   **Outcome:** Adopt (Non-Tech Model uses SPY features).
+*   **Key Findings:**
+    *   Adding `SPY` features (Gap, RSI, Dist_MA) increased Non-Tech Win Rate from 52.01% to **52.84%**.
+    *   SPY features are the top 3 most important predictors, proving Non-Tech stocks are driven by broad market sentiment.
+    *   Avg Return increased by 46% (+0.06%).
 
 ### **EXP-10: Crypto-Specific Ensemble (The "Crypto Branch")**
 *   **Result:** ❌ Failed (Hypothesis Rejected, but insight gained).

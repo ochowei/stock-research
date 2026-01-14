@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2025-02-26: EXP-11 Non-Tech Feature Augmentation (SPY Context)
+*   **Lesson:** **Context Works for Everyone.** Just as QQQ features improved the Tech model, adding SPY features (`Gap`, `RSI`, `Dist_MA20`) to the Non-Tech model significantly improved performance (+0.83% Win Rate, +46% Avg Return).
+*   **Observation:** SPY features became the top 3 most important predictors for Non-Tech stocks, confirming that broad market sentiment is a primary driver for mean reversion, even more so than individual stock technicals.
+*   **Action:** Adopt the "Base + SPY" model for all Non-Tech tickers. This completes the "Contextual Ensemble" vision where every stock is traded with awareness of its relevant sector/market benchmark.
+
 ## 2025-02-25: EXP-10 Crypto-Specific Ensemble
 *   **Lesson:** **Domain Definition is Critical.** The attempt to train a "Crypto" model failed because the "Crypto Sensitive Pool" resource contained non-crypto stocks (e.g., Dutch Bros, Hims).
 *   **Observation:** Forcing high-context features (Bitcoin Price Action) onto unrelated assets creates noise that degrades predictive power (Win Rate dropped from 53.98% to 52.66%). However, the model did reduce the average loss per trade, possibly by filtering out bad trades during extreme BTC volatility.
