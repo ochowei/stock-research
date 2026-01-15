@@ -1,10 +1,10 @@
-# EXP-08: Production Integration (V6.3 Release)
+# EXP-08: Production Integration (V6.2.3 Release)
 
 ## 1. Objective
-Consolidate findings from EXP-05 (Sector Ensembles), EXP-06 (Hyperparameter Tuning), and EXP-07 (Tech-Specific Features) into a unified production generation script (`production_daily_plan_v6_3.py`).
+Consolidate findings from EXP-05 (Sector Ensembles), EXP-06 (Hyperparameter Tuning), and EXP-07 (Tech-Specific Features) into a unified production generation script (`production_daily_plan_v6_2_3.py`).
 
 ## 2. Rationale
-We have established three critical components for V6.3:
+We have established three critical components for V6.2.3:
 1.  **Heterogeneous Ensemble:** Separating Tech vs. Non-Tech sectors yields better results.
 2.  **Tech-Specific Feature Engineering:** Tech stocks require `QQQ` context (`Gap`, `RSI`, `Dist_MA20`, `Sector_Corr`) to perform well (WR > 53%).
 3.  **Divergent Regularization:**
@@ -24,9 +24,9 @@ We have established three critical components for V6.3:
     *   Load full dataset (2020-2023 Train, 2024-Present Test/Verify).
     *   Train Non-Tech Model on Non-Tech stocks.
     *   Train Tech Model on Tech stocks using the merged QQQ dataset.
-    *   Save models as `v6.3_non_tech_model.joblib` and `v6.3_tech_model.joblib`.
+    *   Save models as `v6.2.3_non_tech_model.joblib` and `v6.2.3_tech_model.joblib`.
 
-2.  **Generate Production Script (`production_daily_plan_v6_3.py`):**
+2.  **Generate Production Script (`production_daily_plan_v6_2_3.py`):**
     *   Script must handle downloading Tickers + QQQ.
     *   Must dynamically split Tickers by Sector.
     *   Must apply `prepare_benchmark_features` for QQQ and merge for Tech stocks.
