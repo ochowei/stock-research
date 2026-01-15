@@ -8,7 +8,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟡 Backlog
 
-(Empty)
+### **EXP-21: Limit Order Entry Optimization (Short into Strength)**
+* **Hypothesis:** Based on EXP-12/16 findings of "Morning Fake-Outs" (price moves against signal initially), using a Limit Order slightly above Open (e.g., Open * 1.005) may improve entry price and Sharpe, despite lower fill rates.
+* **Goal:** Extract execution alpha by fading the initial morning volatility.
+
+### **EXP-20: Relative Gap Features (Index Interaction)**
+* **Hypothesis:** Explicitly calculating the difference between Stock Gap and Index Gap (e.g., `Stock_Gap - QQQ_Gap`) will provide a stronger signal than feeding them as separate features. "Gapping up against a red market" might be a higher conviction short.
+* **Goal:** Enhance Feature Engineering for the Heterogeneous Ensemble.
+
+### **EXP-19: Crypto Sector Specific Model (Pure Play Data)**
+* **Hypothesis:** Re-test of EXP-15 but with a sanitized, strict "Pure Play" Crypto pool (COIN, MSTR, RIOT, MARA). Eliminating non-crypto noise should allow BTC features to correctly predict movements without overfitting.
+* **Goal:** Finalize the handling of the Crypto sector (Specialized Model vs. Base Model).
 
 ## ⚫ Done
 
