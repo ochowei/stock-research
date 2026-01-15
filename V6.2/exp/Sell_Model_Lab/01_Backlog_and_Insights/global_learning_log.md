@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-22: EXP-17 Confidence-Based Position Sizing
+*   **Lesson:** **Confidence Correlates with Alpha.** The LightGBM model's probability output (`predict_proba`) is a reliable indicator of trade quality. A tiered position sizing strategy (1.5x for High Prob, 1.0x for Medium, 0.5x for Low) significantly improved the Sharpe Ratio (6.24 vs 5.96) and reduced Max Drawdown by 17% compared to fixed sizing.
+*   **Observation:** The "Linear" sizing approach was too aggressive, increasing total return but also volatility, leading to a lower Sharpe Ratio. The "Tiered" approach struck the optimal balance, effectively "betting big" only when the model was most certain.
+*   **Action:** Adopt Tiered Position Sizing for the production system. Risk management should be proactive (before entry) rather than reactive (intraday stops).
+
 ## 2026-01-21: EXP-16 Catastrophe Stop-Loss Optimization
 *   **Lesson:** **Intraday Stops Are Detrimental.** Even wide "Catastrophe Stops" (3x ATR, Fixed 10%) failed to improve the Sharpe Ratio or reduce Drawdown compared to the baseline "Hold to Close" strategy.
 *   **Observation:** The "Max Drawdown" actually *worsened* with stops (from -0.66 to -0.70). This counter-intuitive result confirms that extreme intraday moves ("morning fake-outs") in this strategy are highly mean-reverting. Exiting at the high (the stop trigger) effectively locks in the maximum possible loss for the day, whereas holding often allows the price to fade back towards the entry.
