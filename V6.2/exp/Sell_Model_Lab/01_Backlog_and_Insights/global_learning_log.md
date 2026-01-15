@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-26: EXP-20 Relative Gap Features (Index Interaction)
+*   **Lesson:** **Implicit Interaction > Explicit Engineering.** Explicitly calculating the difference between Stock Gap and Index Gap (e.g., `Rel_Gap = Stock_Gap - QQQ_Gap`) **degraded** performance in both Tech (-0.49%) and Non-Tech (-0.64%) sectors.
+*   **Observation:** The baseline model (using raw `Gap_Pct` and `Index_Gap_Pct` as separate features) already captures the interaction effectively. Tree-based models (LightGBM) are naturally capable of learning these non-linear relationships. Forcing a linear subtraction likely added noise or diluted the signal.
+*   **Action:** Reject `Rel_Gap` features. Stick to the V6.2.4.RC architecture (Base Features + Raw Index Features) which allows the model to determine the optimal relationship itself.
+
 ## 2026-01-25: EXP-19 Crypto Sector Specific Model (Pure Play Data)
 *   **Lesson:** **Data Purity is Key for Domain Features.** When testing the Crypto-Specific Model on a strictly "Pure Play" pool (COIN, MSTR, RIOT, MARA), the addition of Bitcoin features (`BTC_Change`, `BTC_Gap`) successfully improved the Win Rate (+0.50%) over the Base model.
 *   **Observation:** This reverses the negative result of EXP-15, proving that the failure was due to the inclusion of non-pure crypto stocks in the pool. For true proxy stocks, the underlying asset's price action (BTC) is the dominant driver of alpha (Top 2 Feature Importance).
