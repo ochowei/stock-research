@@ -12,11 +12,16 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 * **Hypothesis:** Based on EXP-12/16 findings of "Morning Fake-Outs" (price moves against signal initially), using a Limit Order slightly above Open (e.g., Open * 1.005) may improve entry price and Sharpe, despite lower fill rates.
 * **Goal:** Extract execution alpha by fading the initial morning volatility.
 
-### **EXP-20: Relative Gap Features (Index Interaction)**
-* **Hypothesis:** Explicitly calculating the difference between Stock Gap and Index Gap (e.g., `Stock_Gap - QQQ_Gap`) will provide a stronger signal than feeding them as separate features. "Gapping up against a red market" might be a higher conviction short.
-* **Goal:** Enhance Feature Engineering for the Heterogeneous Ensemble.
-
 ## ⚫ Done
+
+### **EXP-20: Relative Gap Features (Index Interaction)**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Do not adopt.
+*   **Key Findings:**
+    *   **Tech Sector:** Win Rate decreased by 0.49%.
+    *   **Non-Tech Sector:** Win Rate decreased by 0.64%.
+    *   **Insight:** Explicitly calculating `Gap - Index_Gap` added noise. Tree models already learn this interaction from the raw features (`Gap_Pct` and `Index_Gap_Pct`), which remained top predictors.
+    *   **Action:** Stick to the V6.2.4.RC architecture (Base + Raw Index Features).
 
 ### **EXP-19: Crypto Sector Specific Model (Pure Play Data)**
 *   **Result:** ✅ Success (Incremental Improvement).
