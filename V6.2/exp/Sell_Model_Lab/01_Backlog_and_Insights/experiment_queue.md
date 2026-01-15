@@ -4,24 +4,20 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-22: Context-Aware Hyperparameter Optimization (Re-Tune)**
-* **Status:** Ready to Start
-* **Rationale:** The current hyperparameters (tuned in EXP-06) were optimized for the 5-feature Base set. V6.4 introduces Sector Context (QQQ/SPY features), increasing the feature count to ~10. The strict regularization (e.g., Tech Depth=3) is likely causing underfitting by preventing the model from learning the interaction between Stock Technicals and Market Context.
-* **Hypothesis:** Re-tuning hyperparameters specifically for the V6.4 architectures (Tech=Base+QQQ, NonTech=Base+SPY) will unlock additional alpha hidden in the context features.
-* **Design:**
-    * **Objective:** Maximize Sharpe Ratio (with Win Rate constraint > 50%).
-    * **Scope:** Run independent Optuna sweeps for:
-        1.  **Tech Model:** Input = Base + QQQ Features.
-        2.  **Non-Tech Model:** Input = Base + SPY Features.
-    * **Search Space:** Relax the strict constraints from EXP-06 (e.g., allow Max Depth up to 8-10, vary Learning Rate).
-
-## 🟡 Backlog
-
 ### **EXP-23: RSI Period Sensitivity (Short-Term Mean Reversion)**
 * **Hypothesis:** The standard `RSI_14` is a medium-term swing indicator. Our strategy exploits overnight "Gap" overreactions, which are immediate and short-term events. A shorter-term RSI (e.g., `RSI_2`, `RSI_4`, or `ConnorsRSI`) may better capture the acute "overbought" state that leads to a successful gap fill than the smoothed RSI_14.
 * **Design:** Test `RSI_Period` = [2, 3, 4, 5, 7, 10] against the baseline 14 within the V6.4 framework.
 
 ## ⚫ Done
+
+### **EXP-22: Context-Aware Hyperparameter Optimization (Re-Tune)**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Reject new parameters. Maintain V6.2.4.RC parameters (Tech=Depth 3, NonTech=Unlimited).
+*   **Key Findings:**
+    *   **Tech Sector:** Optimization selected deeper trees (Depth 11) which overfitted and underperformed the regularized baseline (Depth 3) on the Test Set.
+    *   **Non-Tech Sector:** Optimization selected shallower trees (Depth 5) which also slightly underperformed the baseline (Unlimited Depth).
+    *   **Ensemble:** Baseline Ensemble (53.34% WR) beat Optimized Ensemble (52.93% WR).
+    *   **Lesson:** The parameters derived in EXP-06 are remarkably robust. Automated optimization on limited data (2020-2023) failed to generalize to the 2024-2025 regime.
 
 ### **EXP-21: Limit Order Entry Optimization (Short into Strength)**
 *   **Result:** ❌ Failed (Hypothesis Rejected).

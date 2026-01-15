@@ -1,5 +1,11 @@
 # Global Learning Log
 
+## 2026-01-28: EXP-22 Context-Aware Hyperparameter Optimization (Re-Tune)
+*   **Lesson:** **Robustness > Optimization.** The rigorous manual regularization parameters discovered in EXP-06 (Tech: Depth 3, Non-Tech: Unlimited) proved superior to automated Optuna tuning for the V6.2.4.RC architecture.
+*   **Observation:** The automated optimization process, driven by validation set metrics (2020-2023), selected deeper trees (Depth 11 for Tech) that overfitted to the training regime. When tested on 2024-2025 data, these "optimized" models underperformed the simpler, constrained baseline models.
+*   **Insight:** The "Tech = Herd" insight implies that signal behavior is simple and driven by macro factors (QQQ). Allowing the model more complexity (Deeper Trees) just allows it to memorize noise rather than learning the core macro relationship.
+*   **Action:** Reject the new hyperparameters. Stick to the battle-tested EXP-06 parameters for the V6.2 production system.
+
 ## 2026-01-27: EXP-21 Limit Order Entry Optimization
 *   **Lesson:** **The Best Shorts Don't Look Back.** Attempting to "short into strength" by placing Limit Orders above the open (Open + 0.5%) degraded performance across all metrics (Sharpe 4.90 vs 5.46 for Baseline).
 *   **Observation:** The trades that triggered the limit orders (by spiking up initially) had a *lower* average return (1.37%) than the baseline pool (1.49%). This implies an **Adverse Selection** bias: stocks that show immediate buying strength after the open are less likely to reverse significantly compared to those that drop immediately.
