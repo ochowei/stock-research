@@ -216,13 +216,13 @@ def build_features(df, bm_df, bm_prefix, bm_features):
 
 def generate_production_script():
     script_content = r'''"""
-Production Daily Plan V6.4
+Production Daily Plan V6.2.4
 --------------------------
 Generates daily sell signals using a Heterogeneous Ensemble:
 1. Non-Tech Model: Base Features + SPY Context + LightGBM (Unlimited Depth, LR 0.02)
 2. Tech Model: Base + QQQ Features + LightGBM (Depth 3, LR 0.01)
 
-Usage: python production_daily_plan_v6_4.py
+Usage: python production_daily_plan_v6_2_4.py
 """
 
 import os
@@ -241,8 +241,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCE_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', '..', '..', 'resource'))
 MODEL_DIR = BASE_DIR
 
-NON_TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.4_non_tech_model.joblib')
-TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.4_tech_model.joblib')
+NON_TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.2.4_non_tech_model.joblib')
+TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.2.4_tech_model.joblib')
 SECTOR_MAP_PATH = os.path.join(MODEL_DIR, 'sector_map.json')
 
 BASE_FEATURES = ['Gap_Pct', 'RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Dist_MA20']
@@ -334,7 +334,7 @@ def build_features_latest(df, bm_df, prefix, bm_features):
     return row
 
 def main():
-    print("=== V6.4 Production Signal Generator ===")
+    print("=== V6.2.4 Production Signal Generator ===")
 
     tickers = load_tickers()
     with open(SECTOR_MAP_PATH, 'r') as f:
@@ -415,13 +415,13 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-    with open(os.path.join(OUTPUT_DIR, 'production_daily_plan_v6_4.py'), 'w') as f:
+    with open(os.path.join(OUTPUT_DIR, 'production_daily_plan_v6_2_4.py'), 'w') as f:
         f.write(script_content)
 
 # --- 3. Main ---
 
 def main():
-    print("=== EXP-13: Production Deployment (V6.4) ===")
+    print("=== EXP-13: Production Deployment (V6.2.4) ===")
 
     tickers = load_tickers()
     sector_map = fetch_sectors(tickers)
@@ -447,7 +447,7 @@ def main():
 
         tech_model = LGBMClassifier(**TECH_PARAMS)
         tech_model.fit(X, y, sample_weight=w)
-        joblib.dump(tech_model, os.path.join(OUTPUT_DIR, 'v6.4_tech_model.joblib'))
+        joblib.dump(tech_model, os.path.join(OUTPUT_DIR, 'v6.2.4_tech_model.joblib'))
         print("Tech Model Saved.")
 
     print("\n--- Training Non-Tech Model (Base + SPY) ---")
@@ -467,7 +467,7 @@ def main():
 
         nt_model = LGBMClassifier(**NON_TECH_PARAMS)
         nt_model.fit(X, y, sample_weight=w)
-        joblib.dump(nt_model, os.path.join(OUTPUT_DIR, 'v6.4_non_tech_model.joblib'))
+        joblib.dump(nt_model, os.path.join(OUTPUT_DIR, 'v6.2.4_non_tech_model.joblib'))
         print("Non-Tech Model Saved.")
 
     print("\n--- Generating Production Script ---")
