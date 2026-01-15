@@ -199,13 +199,13 @@ def build_features(df, qqq_df, is_tech=False):
 
 def generate_production_script():
     content = r'''"""
-Production Daily Plan V6.2.3
+Production Daily Plan V6.3
 --------------------------
 Generates daily sell signals using a Heterogeneous Ensemble:
 1. Non-Tech Model: Base Features (5) + LightGBM (Unlimited Depth, LR 0.02)
 2. Tech Model: Base + QQQ Features (9) + LightGBM (Depth 3, LR 0.01)
 
-Usage: python production_daily_plan_v6_2_3.py
+Usage: python production_daily_plan_v6_3.py
 """
 
 import os
@@ -228,8 +228,8 @@ if not os.path.exists(RESOURCE_DIR):
     # Fallback for dev environment structure
     RESOURCE_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', '..', '..', 'resource'))
 
-NON_TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.2.3_non_tech_model.joblib')
-TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.2.3_tech_model.joblib')
+NON_TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.3_non_tech_model.joblib')
+TECH_MODEL_PATH = os.path.join(MODEL_DIR, 'v6.3_tech_model.joblib')
 SECTOR_MAP_PATH = os.path.join(MODEL_DIR, 'sector_map.json')
 
 BASE_FEATURES = ['Gap_Pct', 'RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Dist_MA20']
@@ -289,7 +289,7 @@ def build_features_latest(df, qqq_df, is_tech=False):
     # We need today's Opening price to calculate Gap.
     # If generating plan BEFORE open, we can't calculate Gap yet.
     # This script likely generates "Potential Signals" or assumes we run it right after Open.
-    # In V6.2/V6.2.3, we typically pass the 'Current Open' to the model.
+    # In V6.2/V6.3, we typically pass the 'Current Open' to the model.
     # Let's assume the data contains the latest candle with Open.
 
     open_p = df['Open'].fillna(df['Close'])
@@ -331,7 +331,7 @@ def build_features_latest(df, qqq_df, is_tech=False):
     return row
 
 def main():
-    print("=== V6.2.3 Production Signal Generator ===")
+    print("=== V6.3 Production Signal Generator ===")
 
     # Load Resources
     tickers = load_tickers()
@@ -421,7 +421,7 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-    with open(os.path.join(OUTPUT_DIR, 'production_daily_plan_v6_2_3.py'), 'w') as f:
+    with open(os.path.join(OUTPUT_DIR, 'production_daily_plan_v6_3.py'), 'w') as f:
         f.write(content)
     print("Generated production script.")
 
@@ -467,7 +467,7 @@ def main():
 
     model_nt = LGBMClassifier(**NON_TECH_PARAMS)
     model_nt.fit(X_nt, y_nt, sample_weight=w_nt)
-    joblib.dump(model_nt, os.path.join(OUTPUT_DIR, 'v6.2.3_non_tech_model.joblib'))
+    joblib.dump(model_nt, os.path.join(OUTPUT_DIR, 'v6.3_non_tech_model.joblib'))
 
     # 3. Train Tech Model
     print("\n--- Training Tech Model ---")
@@ -498,12 +498,12 @@ def main():
 
     model_t = LGBMClassifier(**TECH_PARAMS)
     model_t.fit(X_t, y_t, sample_weight=w_t)
-    joblib.dump(model_t, os.path.join(OUTPUT_DIR, 'v6.2.3_tech_model.joblib'))
+    joblib.dump(model_t, os.path.join(OUTPUT_DIR, 'v6.3_tech_model.joblib'))
 
     # 4. Generate Script
     generate_production_script()
 
-    print("\nSUCCESS: V6.2.3 Models and Script Generated.")
+    print("\nSUCCESS: V6.3 Models and Script Generated.")
 
 if __name__ == '__main__':
     main()
