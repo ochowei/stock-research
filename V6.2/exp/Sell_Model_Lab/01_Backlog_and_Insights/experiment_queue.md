@@ -4,18 +4,22 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-13: Production Deployment (V6.4)**
-* **Context:** We have successfully optimized both Tech (QQQ features, EXP-07) and Non-Tech (SPY features, EXP-11) models. We also confirmed MOC (Hold to Close) is the superior execution strategy (EXP-09, EXP-12).
-* **Hypothesis:** Combining these two new models into the production `production_daily_plan.py` script will deliver the best overall system performance.
-* **Plan:** Update production scripts to use `v6.4_tech_model.joblib` and `v6.4_non_tech_model.joblib`.
-
-## 🟡 Backlog
-
 ### **EXP-14: Delayed Entry Optimization**
 * **Context:** EXP-12 showed that trades have a negative return (-0.86%) in the first hour, meaning prices often move against the "Sell" signal initially.
 * **Hypothesis:** Entering the trade 1 hour after Open (or fading the 1H High) might significantly improve the entry price and Win Rate by avoiding the "morning fake-out".
 
+## 🟡 Backlog
+
 ## ⚫ Done
+
+### **EXP-13: Production Deployment (V6.4)**
+*   **Result:** ✅ Success (System Operational).
+*   **Outcome:** V6.4 Production System deployed.
+*   **Key Findings:**
+    *   Successfully implemented **Enhanced Heterogeneous Ensemble**.
+    *   **Tech Model:** Uses Base + QQQ features.
+    *   **Non-Tech Model:** Uses Base + SPY features.
+    *   Production script `production_daily_plan_v6_4.py` generates valid signals using correct routing.
 
 ### **EXP-12: Time-Decay Exit Optimization**
 * **Result:** ❌ Failed (Hypothesis Rejected).
