@@ -1,10 +1,16 @@
 # Global Learning Log
 
+## 2026-01-15: EXP-14 Delayed Entry Optimization
+*   **Lesson:** **Timing the Market < Time in the Market (Even Intraday).** Delaying entry by 1 hour to avoid the "Morning Fake-Out" destroyed performance, reducing Win Rate by ~5% and Avg Return by ~50%.
+*   **Observation:** While EXP-12 suggested the *average* 1H return is negative, EXP-14 proves that *winning trades* likely resolve immediately. By waiting 1 hour, we miss the most profitable moves completely.
+*   **Insight:** The V6.4 signals are high quality and don't need "confirmation" via a 1-hour wait. The "Morning Fake-Out" phenomenon is likely driven by losing trades, not the winners.
+*   **Action:** Reject Delayed Entry. Continue to execute "Sell at Market Open" (MOC Strategy).
+
 ## 2026-01-14: EXP-12 Time-Decay Exit Optimization
 *   **Lesson:** **Alpha Does Not Decay Intraday.** The hypothesis that the edge from the Sell Model is a "quick burst" that dissipates after a few hours was decisively rejected.
 *   **Observation:** The "Hold to Close" (Market On Close) strategy yielded a Total Return of **+31.16%**, whereas exiting after 1 hour resulted in a **-0.86%** return. Exiting at any hourly interval (2H, 3H, 4H) significantly underperformed holding to the close.
 *   **Insight:** The negative 1H return suggests a "Morning Fake-Out" pattern where prices initially move against the short signal before reversing later in the day. The edge is a day-long mean reversion/distribution event, not a scalp.
-*   **Action:** Retain "Hold to Close" as the production execution strategy. Investigate "Delayed Entry" (entering after 10:30 AM) to potentially capture the reversal while avoiding the initial drawdown.
+*   **Action:** Retain "Hold to Close" as the production execution strategy. (Update: EXP-14 confirmed that trying to time this "Fake-Out" via delayed entry is counter-productive).
 
 ## 2025-02-26: EXP-11 Non-Tech Feature Augmentation (SPY Context)
 *   **Lesson:** **Context Works for Everyone.** Just as QQQ features improved the Tech model, adding SPY features (`Gap`, `RSI`, `Dist_MA20`) to the Non-Tech model significantly improved performance (+0.83% Win Rate, +46% Avg Return).
