@@ -4,9 +4,10 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-14: Delayed Entry Optimization**
-* **Context:** EXP-12 showed that trades have a negative return (-0.86%) in the first hour, meaning prices often move against the "Sell" signal initially.
-* **Hypothesis:** Entering the trade 1 hour after Open (or fading the 1H High) might significantly improve the entry price and Win Rate by avoiding the "morning fake-out".
+### **EXP-15: Crypto-Specific Ensemble (Clean Data Redux)**
+* **Context:** EXP-10 (Crypto Branch) 失敗，主要原因是資產池污染（混入了非加密相關股票如 Dutch Bros）。然而，該實驗也發現 Crypto 模型能有效降低虧損幅度。
+* **Hypothesis:** 既然 QQQ 特徵能顯著優化 Tech 板塊 (EXP-07)，那麼在**純淨的加密貨幣相關股池** (COIN, MSTR, RIOT, MARA) 上，加入 `BTC_Trend` 與 `Crypto_Corr` 特徵，應該能顯著提升預測準確度，複製 Sector Ensemble 的成功模式。
+* **Goal:** 建立第三個專用模型路由：Tech / Non-Tech / Crypto。
 
 ## 🟡 Backlog
 
@@ -20,6 +21,14 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 * **Hypothesis:** 雖然緊迫的止損 (0.5% - 2.0%) 會損害績效，但設置一個**寬幅的「災難止損」(Catastrophe Stop)**（例如 3倍 ATR 或 固定 5%），可能可以在不觸發「早盤假動作」的前提下，切斷極端左尾風險 (Left Tail Risk)，從而提升夏普比率 (Sharpe Ratio)。
 
 ## ⚫ Done
+
+### **EXP-14: Delayed Entry Optimization**
+* **Result:** ❌ Failed (Hypothesis Rejected).
+* **Outcome:** Reject Delayed Entry. Maintain "Market On Close" execution at Open.
+* **Key Findings:**
+    *   **Baseline (Open Entry):** 63.14% Win Rate, +1.45% Avg Return.
+    *   **Delayed (10:30 Entry):** 57.85% Win Rate, +0.75% Avg Return.
+    *   Waiting 1 hour forfeits significant alpha; the V6.4 model signals tend to work immediately.
 
 ### **EXP-13: Production Deployment (V6.4)**
 *   **Result:** ✅ Success (System Operational).
