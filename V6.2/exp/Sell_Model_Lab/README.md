@@ -36,6 +36,17 @@ V6.2/exp/Sell\_Model\_Lab/
     ├── EXP\_01\_Crypto\_Ablation/      \# (範例) 實驗 1  
     └── EXP\_02\_Simple\_XGB/           \# (範例) 實驗 2
 
+## **🎯 Success Metrics (驗收標準)**
+
+本實驗室的優化目標是產出高勝率、正期望值的賣出策略。所有實驗結果應根據以下優先順序進行評估：
+
+1.  **Average Return (平均回報)**: `> 0.20%` per trade (扣除成本前)。
+    * *Rationale*: 必須顯著高於交易成本與滑價，確保實際獲利能力。
+2.  **Win Rate (勝率/準確率)**: `> 55%` (理想目標 `60%`)。
+    * *Rationale*: 作為 Filter Model，減少 False Positive 是核心任務。
+3.  **Signal Count (訊號數量)**: 確保測試集樣本數充足 (e.g., `> 1000` trades/year)，具有統計意義。
+    * *Note*: 不需為了追求數量而犧牲上述兩項指標。
+
 ## **🤖 AI Agent Workflow (工作流程)**
 
 我們使用三個主要的 AI Agent 角色來推進實驗：
