@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-25: EXP-19 Crypto Sector Specific Model (Pure Play Data)
+*   **Lesson:** **Data Purity is Key for Domain Features.** When testing the Crypto-Specific Model on a strictly "Pure Play" pool (COIN, MSTR, RIOT, MARA), the addition of Bitcoin features (`BTC_Change`, `BTC_Gap`) successfully improved the Win Rate (+0.50%) over the Base model.
+*   **Observation:** This reverses the negative result of EXP-15, proving that the failure was due to the inclusion of non-pure crypto stocks in the pool. For true proxy stocks, the underlying asset's price action (BTC) is the dominant driver of alpha (Top 2 Feature Importance).
+*   **Action:** Adopt the Crypto-Enhanced Model (Base + BTC features) specifically for the Pure Play Crypto sector.
+
 ## 2026-01-23: EXP-18 Production Script Update (Position Sizing)
 *   **Lesson:** **Operationalizing Alpha.** The Tiered Position Sizing strategy (verified in EXP-17) was successfully integrated into the daily production script `production_daily_plan_v6_2_5_rc.py`.
 *   **Observation:** The system now automatically assigns position sizes (1.5x, 1.0x, 0.5x) based on the model's confidence probability. This removes manual intervention and ensures that high-conviction trades receive the capital allocation they deserve to maximize the Sharpe Ratio.
