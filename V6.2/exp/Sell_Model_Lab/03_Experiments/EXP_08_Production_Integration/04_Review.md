@@ -1,12 +1,12 @@
-# EXP-08: Production Integration (V6.2.3 Release) - Review
+# EXP-08: Production Integration (V6.3 Release) - Review
 
 ## 1. Executive Summary
 *   **Result:** ✅ **Success**.
-*   **Outcome:** V6.2.3 Production System is operational.
+*   **Outcome:** V6.3 Production System is operational.
 *   **Deliverables:**
-    *   `production_daily_plan_v6_2_3.py`: Unified script for generating daily signals.
-    *   `v6.2.3_non_tech_model.joblib`: Optimized Non-Tech Model (LGBM, Unlimited Depth).
-    *   `v6.2.3_tech_model.joblib`: Optimized Tech Model (LGBM, Depth 3, Base + QQQ Features).
+    *   `production_daily_plan_v6_3.py`: Unified script for generating daily signals.
+    *   `v6.3_non_tech_model.joblib`: Optimized Non-Tech Model (LGBM, Unlimited Depth).
+    *   `v6.3_tech_model.joblib`: Optimized Tech Model (LGBM, Depth 3, Base + QQQ Features).
     *   `sector_map.json`: Sector mapping cache.
 
 ## 2. Verification
@@ -21,7 +21,7 @@
         *   `DDOG` (Technology) -> Used Tech Model (Base + QQQ Features).
         *   Probabilities vary appropriately (0.51 - 0.72).
 
-## 3. Key Features of V6.2.3
+## 3. Key Features of V6.3
 *   **Sector-Specific Logic:** Automatically routes tickers to the correct model based on sector.
 *   **Dynamic Feature Engineering:**
     *   Tech stocks get context-aware features (`QQQ_Gap`, `QQQ_RSI`).
@@ -31,7 +31,7 @@
     *   Includes sector map caching to reduce API calls.
 
 ## 4. Next Steps
-*   **Deploy:** Move `production_daily_plan_v6_2_3.py` and models to the main `V6.2/exp/` directory (or a `V6.2.3_Release` folder).
+*   **Deploy:** Move `production_daily_plan_v6_3.py` and models to the main `V6.2/exp/` directory (or a `V6.3_Release` folder).
 *   **Monitor:** Watch for `Sector_Corr` stability in live trading (correlation can drift).
 *   **Backlog:**
     *   Close EXP-08.
