@@ -8,11 +8,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟡 Backlog
 
-### **EXP-18: Production Script Update (Position Sizing)**
-* **Context:** EXP-17 confirmed that Tiered Position Sizing improves Sharpe Ratio. We need to implement this in the daily production script.
-* **Goal:** Update `production_daily_plan_v6_4.py` (or create v6.5) to include position sizing logic.
+(Empty)
 
 ## ⚫ Done
+
+### **EXP-18: Production Script Update (Position Sizing)**
+* **Result:** ✅ Success (Script Updated to V6.5 RC).
+* **Outcome:** `production_daily_plan_v6_5_rc.py` deployed.
+* **Key Findings:**
+    *   Successfully implemented Tiered Position Sizing logic (1.5x/1.0x/0.5x).
+    *   Verified signal generation and sizing output using `daily_plan_2026-01-14.csv`.
+    *   System now fully automates the high-Sharpe strategy discovered in EXP-17.
 
 ### **EXP-17: Confidence-Based Position Sizing (信心權重配置)**
 *   **Result:** ✅ Major Success (Highest Sharpe Ratio).
