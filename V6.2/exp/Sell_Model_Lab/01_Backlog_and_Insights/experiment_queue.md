@@ -16,11 +16,16 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 * **Hypothesis:** Explicitly calculating the difference between Stock Gap and Index Gap (e.g., `Stock_Gap - QQQ_Gap`) will provide a stronger signal than feeding them as separate features. "Gapping up against a red market" might be a higher conviction short.
 * **Goal:** Enhance Feature Engineering for the Heterogeneous Ensemble.
 
-### **EXP-19: Crypto Sector Specific Model (Pure Play Data)**
-* **Hypothesis:** Re-test of EXP-15 but with a sanitized, strict "Pure Play" Crypto pool (COIN, MSTR, RIOT, MARA). Eliminating non-crypto noise should allow BTC features to correctly predict movements without overfitting.
-* **Goal:** Finalize the handling of the Crypto sector (Specialized Model vs. Base Model).
-
 ## ⚫ Done
+
+### **EXP-19: Crypto Sector Specific Model (Pure Play Data)**
+*   **Result:** ✅ Success (Incremental Improvement).
+*   **Outcome:** Adopt Crypto-Enhanced Model for Pure Play Crypto Sector.
+*   **Key Findings:**
+    *   **Win Rate:** Base (52.45%) vs Test (52.95%).
+    *   **Feature Importance:** `BTC_Change` and `BTC_Gap` are top predictors, confirming these stocks move as "Bitcoin Derivatives".
+    *   Pure Play restriction solved the noise issue from EXP-15.
+    *   **Trade-off:** Win Rate improved, but Avg Return diluted slightly due to higher signal count.
 
 ### **EXP-18: Production Script Update (Position Sizing)**
 * **Result:** ✅ Success (Script Updated to V6.2.5 RC).
