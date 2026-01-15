@@ -11,7 +11,7 @@ Specifically:
 1.  **Setup**: Create experiment folder and `03_Output` directory.
 2.  **Asset Migration**: Copy the validated models (`v6.2.4_rc_tech_model.joblib`, `v6.2.4_rc_non_tech_model.joblib`) and `sector_map.json` from `EXP_13` to the local `03_Output` folder to simulate a self-contained production environment.
 3.  **Implementation**:
-    *   Create `production_daily_plan_v6_5_rc.py` by extending `production_daily_plan_v6_2_4_rc.py`.
+    *   Create `production_daily_plan_v6_2_5_rc.py` by extending `production_daily_plan_v6_2_4_rc.py`.
     *   Add a function `get_position_size(prob)` that implements the tiered logic.
     *   Apply this function to the DataFrame after signal generation.
     *   Add a new column `Position_Size` to the output CSV.

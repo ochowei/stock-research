@@ -13,8 +13,8 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 ## ⚫ Done
 
 ### **EXP-18: Production Script Update (Position Sizing)**
-* **Result:** ✅ Success (Script Updated to V6.5 RC).
-* **Outcome:** `production_daily_plan_v6_5_rc.py` deployed.
+* **Result:** ✅ Success (Script Updated to V6.2.5 RC).
+* **Outcome:** `production_daily_plan_v6_2_5_rc.py` deployed.
 * **Key Findings:**
     *   Successfully implemented Tiered Position Sizing logic (1.5x/1.0x/0.5x).
     *   Verified signal generation and sizing output using `daily_plan_2026-01-14.csv`.

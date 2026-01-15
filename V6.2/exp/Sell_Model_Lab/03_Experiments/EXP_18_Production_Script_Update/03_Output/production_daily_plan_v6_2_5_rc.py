@@ -1,16 +1,16 @@
 
 
 """
-Production Daily Plan V6.5 RC
+Production Daily Plan V6.2.5 RC
 --------------------------
 Generates daily sell signals using a Heterogeneous Ensemble:
 1. Non-Tech Model: Base Features + SPY Context + LightGBM (Unlimited Depth, LR 0.02)
 2. Tech Model: Base + QQQ Features + LightGBM (Depth 3, LR 0.01)
 
-Changes in V6.5:
+Changes in V6.2.5.RC:
 - Added Tiered Position Sizing (1.5x / 1.0x / 0.5x) based on Probability.
 
-Usage: python production_daily_plan_v6_5_rc.py
+Usage: python production_daily_plan_v6_2_5_rc.py
 """
 
 import os
@@ -134,7 +134,7 @@ def build_features_latest(df, bm_df, prefix, bm_features):
     return row
 
 def main():
-    print("=== V6.5 Production Signal Generator (with Sizing) ===")
+    print("=== V6.2.5.RC Production Signal Generator (with Sizing) ===")
 
     tickers = load_tickers()
     if not tickers:

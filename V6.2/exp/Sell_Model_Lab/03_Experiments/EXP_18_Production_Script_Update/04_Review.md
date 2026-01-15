@@ -4,7 +4,7 @@
 The goal of this experiment was to integrate the **Tiered Position Sizing** logic (validated in EXP-17) into the daily production script.
 
 ### Verification of Artifacts
-*   **Script Created**: `production_daily_plan_v6_5_rc.py` was successfully generated in the output directory.
+*   **Script Created**: `production_daily_plan_v6_2_5_rc.py` was successfully generated in the output directory.
 *   **Execution**: The script ran successfully, generating signals for the latest available date (`2026-01-14`).
 *   **Output CSV**: `daily_plan_2026-01-14.csv` was created and contained the expected columns, including `Position_Size`.
 
@@ -26,11 +26,11 @@ Sample output from verification:
 *Note: The actual probability values were checked programmatically and matched the expected sizing.*
 
 ## 2. Conclusion
-The production script has been successfully updated to V6.5 RC. It now natively handles position sizing, removing the need for manual calculation or post-processing.
+The production script has been successfully updated to V6.2.5 RC. It now natively handles position sizing, removing the need for manual calculation or post-processing.
 
 **Result**: ✅ Success.
 
 ## 3. Next Steps
-*   Deploy `production_daily_plan_v6_5_rc.py` as the standard daily generation tool.
+*   Deploy `production_daily_plan_v6_2_5_rc.py` as the standard daily generation tool.
 *   Update `global_learning_log.md` to reflect the deployment.
 *   Mark EXP-18 as Done in the backlog.
