@@ -4,23 +4,23 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-17: Confidence-Based Position Sizing (信心權重配置)**
-* **Context:** 延續 EXP-16 的結論。由於 EXP-16 證實了「盤中停損」會因為早盤的假動作 (Morning Fake-out) 而鎖定虧損，導致績效下降，因此風險控制的重心必須轉移至「進場部位管理」。
-* **Hypothesis:** LightGBM 模型的預測機率 (Probability) 與實際勝率應呈正相關。將更多資金分配給高信心 (High Confidence) 的交易訊號，應能在不犧牲總報酬太多的情況下，顯著提升風險調整後報酬 (Sharpe Ratio) 並降低最大回撤 (Max Drawdown)。
-* **Design:**
-    * **Baseline:** Equal Weight (所有訊號配置固定金額，例如 $10,000)。
-    * **Variant A (Tiered Sizing):** 分級制。
-        * Prob > 60%: 1.5x Position
-        * Prob 55-60%: 1.0x Position
-        * Prob < 55%: 0.5x Position (or Filter out)
-    * **Variant B (Linear Sizing):** 線性映射。Size = (Prob - 0.5) * Scale。
-* **Success Metric:** Sharpe Ratio 需優於 Baseline，且 Max Drawdown 需降低。
+(Empty)
 
 ## 🟡 Backlog
 
-(Empty)
+### **EXP-18: Production Script Update (Position Sizing)**
+* **Context:** EXP-17 confirmed that Tiered Position Sizing improves Sharpe Ratio. We need to implement this in the daily production script.
+* **Goal:** Update `production_daily_plan_v6_4.py` (or create v6.5) to include position sizing logic.
 
 ## ⚫ Done
+
+### **EXP-17: Confidence-Based Position Sizing (信心權重配置)**
+*   **Result:** ✅ Major Success (Highest Sharpe Ratio).
+*   **Outcome:** Adopt Tiered Position Sizing (1.5x/1.0x/0.5x).
+*   **Key Findings:**
+    *   **Tiered Sizing** achieved Sharpe Ratio of **6.24** (vs 5.96 for Baseline) and reduced Max Drawdown by 17%.
+    *   LightGBM probability is a valid proxy for trade quality.
+    *   Allocating more capital to high-confidence signals (>60% Prob) significantly improves risk-adjusted returns.
 
 ### **EXP-16: Catastrophe Stop-Loss Optimization**
 *   **Result:** ❌ Failed (Hypothesis Rejected).
@@ -42,8 +42,8 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ### **EXP-14: Delayed Entry Optimization**
 * **Result:** ❌ Failed (Hypothesis Rejected).
-* **Outcome:** Reject Delayed Entry. Maintain "Market On Close" execution at Open.
-* **Key Findings:**
+*   **Outcome:** Reject Delayed Entry. Maintain "Market On Close" execution at Open.
+*   **Key Findings:**
     *   **Baseline (Open Entry):** 63.14% Win Rate, +1.45% Avg Return.
     *   **Delayed (10:30 Entry):** 57.85% Win Rate, +0.75% Avg Return.
     *   Waiting 1 hour forfeits significant alpha; the V6.4 model signals tend to work immediately.
