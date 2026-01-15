@@ -4,15 +4,22 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-16: Catastrophe Stop-Loss Optimization**
-* **Context:** EXP-09 和 EXP-12 證明了 "Hold to Close" 是期望值最高的策略，但也意味著必須承受無限的潛在虧損風險。目前策略在極端行情下缺乏保護。
-* **Hypothesis:** 雖然緊迫的止損 (0.5% - 2.0%) 會損害績效，但設置一個**寬幅的「災難止損」(Catastrophe Stop)**（例如 3倍 ATR 或 固定 5%），可能可以在不觸發「早盤假動作」的前提下，切斷極端左尾風險 (Left Tail Risk)，從而提升夏普比率 (Sharpe Ratio)。
+(Empty - Please Add New Experiments based on Insights)
 
 ## 🟡 Backlog
 
 (Empty)
 
 ## ⚫ Done
+
+### **EXP-16: Catastrophe Stop-Loss Optimization**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Reject Catastrophe Stops. Maintain "Hold to Close".
+*   **Key Findings:**
+    *   **Baseline (No Stop):** 84.49% Total Return, 5.22 Sharpe, -0.66 Max DD.
+    *   **Catastrophe Stop (3x ATR):** 83.80% Total Return, 5.14 Sharpe, -0.70 Max DD.
+    *   Stops *increased* Max Drawdown, confirming that extreme intraday moves ("morning fake-outs") are often followed by mean reversion.
+    *   Exiting at the high (stop trigger) locks in losses that would otherwise recover by close.
 
 ### **EXP-15: Crypto-Specific Ensemble (Clean Data Redux)**
 *   **Result:** ❌ Failed (Hypothesis Rejected).
