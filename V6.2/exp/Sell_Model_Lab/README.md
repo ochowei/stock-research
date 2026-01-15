@@ -108,4 +108,21 @@ try:
     from daily\_gap\_signal\_generator import ...  
     print("Successfully imported V6.2 modules.")  
 except ImportError:  
-    print("Error importing V6.2 modules. Check sys.path.")  
+    print("Error importing V6.2 modules. Check sys.path.")
+
+## **📏 Versioning & Naming Convention (版本命名規範)**
+
+為保持專案結構一致性，本實驗室內的所有實驗均視為 **V6.2 架構下的迭代**。
+
+1.  **RC (Release Candidate) Naming**:
+    * 當實驗產生可用的 Production Candidate 時，請使用 `.RC` 後綴。
+    * ❌ **禁止** 使用 `V6.3`, `V6.4` 等未來主版本號。
+    * ✅ **正確**: `V6.2.3.RC`, `V6.2.4.RC`。
+
+2.  **Mapping (實驗對照)**:
+    * `EXP-08` -> `V6.2.3.RC` (Heterogeneous Ensemble Integration)
+    * `EXP-13` -> `V6.2.4.RC` (Full Deployment with SPY Context)
+
+3.  **File Naming (檔名)**:
+    * Script: `production_daily_plan_v6_2_x_rc.py`
+    * Model: `v6.2.x_rc_model.joblib`
