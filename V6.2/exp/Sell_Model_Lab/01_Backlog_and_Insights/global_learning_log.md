@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-20: EXP-15 Crypto-Specific Ensemble (Clean Data Redux)
+*   **Lesson:** **Macro Overfitting in Niche Sectors.** Adding Bitcoin features (`BTC_Ret`, `BTC_Trend`) to a "Pure Crypto" stock pool (COIN, MSTR, RIOT) significantly *degraded* performance (Win Rate -4%) compared to a simple Base feature model.
+*   **Observation:** The macro features dominated feature importance, distracting the model from asset-specific price action signals (Gap, RSI) which were actually more predictive. This mirrors the "contaminated pool" failure of EXP-10 but confirms it wasn't just about data purity—it's a fundamental issue where external macro context injects noise into mean-reversion signals for these high-beta assets.
+*   **Action:** Do not build a specialized "Crypto Model" with BTC features. Treat crypto stocks as standard volatile assets using the Base (or Non-Tech) model.
+
 ## 2026-01-15: EXP-14 Delayed Entry Optimization
 *   **Lesson:** **Timing the Market < Time in the Market (Even Intraday).** Delaying entry by 1 hour to avoid the "Morning Fake-Out" destroyed performance, reducing Win Rate by ~5% and Avg Return by ~50%.
 *   **Observation:** While EXP-12 suggested the *average* 1H return is negative, EXP-14 proves that *winning trades* likely resolve immediately. By waiting 1 hour, we miss the most profitable moves completely.
