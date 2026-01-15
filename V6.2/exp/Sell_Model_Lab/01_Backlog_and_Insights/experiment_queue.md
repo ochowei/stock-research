@@ -10,6 +10,15 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟡 Backlog
 
+### **EXP-15: Crypto-Specific Ensemble (Clean Data Redux)**
+* **Context:** EXP-10 (Crypto Branch) 失敗，主要原因是資產池污染（混入了非加密相關股票如 Dutch Bros）。然而，該實驗也發現 Crypto 模型能有效降低虧損幅度。
+* **Hypothesis:** 既然 QQQ 特徵能顯著優化 Tech 板塊 (EXP-07)，那麼在**純淨的加密貨幣相關股池** (COIN, MSTR, RIOT, MARA) 上，加入 `BTC_Trend` 與 `Crypto_Corr` 特徵，應該能顯著提升預測準確度，複製 Sector Ensemble 的成功模式。
+* **Goal:** 建立第三個專用模型路由：Tech / Non-Tech / Crypto。
+
+### **EXP-16: Catastrophe Stop-Loss Optimization**
+* **Context:** EXP-09 和 EXP-12 證明了 "Hold to Close" 是期望值最高的策略，但也意味著必須承受無限的潛在虧損風險。目前策略在極端行情下缺乏保護。
+* **Hypothesis:** 雖然緊迫的止損 (0.5% - 2.0%) 會損害績效，但設置一個**寬幅的「災難止損」(Catastrophe Stop)**（例如 3倍 ATR 或 固定 5%），可能可以在不觸發「早盤假動作」的前提下，切斷極端左尾風險 (Left Tail Risk)，從而提升夏普比率 (Sharpe Ratio)。
+
 ## ⚫ Done
 
 ### **EXP-13: Production Deployment (V6.4)**
