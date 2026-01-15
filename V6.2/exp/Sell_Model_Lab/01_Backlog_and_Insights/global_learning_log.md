@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-21: EXP-16 Catastrophe Stop-Loss Optimization
+*   **Lesson:** **Intraday Stops Are Detrimental.** Even wide "Catastrophe Stops" (3x ATR, Fixed 10%) failed to improve the Sharpe Ratio or reduce Drawdown compared to the baseline "Hold to Close" strategy.
+*   **Observation:** The "Max Drawdown" actually *worsened* with stops (from -0.66 to -0.70). This counter-intuitive result confirms that extreme intraday moves ("morning fake-outs") in this strategy are highly mean-reverting. Exiting at the high (the stop trigger) effectively locks in the maximum possible loss for the day, whereas holding often allows the price to fade back towards the entry.
+*   **Action:** Do not implement trade-level stops. Risk must be managed via position sizing, not by trying to time intraday exits.
+
 ## 2026-01-20: EXP-15 Crypto-Specific Ensemble (Clean Data Redux)
 *   **Lesson:** **Macro Overfitting in Niche Sectors.** Adding Bitcoin features (`BTC_Ret`, `BTC_Trend`) to a "Pure Crypto" stock pool (COIN, MSTR, RIOT) significantly *degraded* performance (Win Rate -4%) compared to a simple Base feature model.
 *   **Observation:** The macro features dominated feature importance, distracting the model from asset-specific price action signals (Gap, RSI) which were actually more predictive. This mirrors the "contaminated pool" failure of EXP-10 but confirms it wasn't just about data purity—it's a fundamental issue where external macro context injects noise into mean-reversion signals for these high-beta assets.
