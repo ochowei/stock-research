@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-27: EXP-21 Limit Order Entry Optimization
+*   **Lesson:** **The Best Shorts Don't Look Back.** Attempting to "short into strength" by placing Limit Orders above the open (Open + 0.5%) degraded performance across all metrics (Sharpe 4.90 vs 5.46 for Baseline).
+*   **Observation:** The trades that triggered the limit orders (by spiking up initially) had a *lower* average return (1.37%) than the baseline pool (1.49%). This implies an **Adverse Selection** bias: stocks that show immediate buying strength after the open are less likely to reverse significantly compared to those that drop immediately.
+*   **Action:** Reject Limit Orders. Maintain Market On Close (MOC) execution at the Open price. The "Morning Fake-Out" (EXP-12) is likely a phenomenon of losing trades, not a reliable entry signal for winners.
+
 ## 2026-01-26: EXP-20 Relative Gap Features (Index Interaction)
 *   **Lesson:** **Implicit Interaction > Explicit Engineering.** Explicitly calculating the difference between Stock Gap and Index Gap (e.g., `Rel_Gap = Stock_Gap - QQQ_Gap`) **degraded** performance in both Tech (-0.49%) and Non-Tech (-0.64%) sectors.
 *   **Observation:** The baseline model (using raw `Gap_Pct` and `Index_Gap_Pct` as separate features) already captures the interaction effectively. Tree-based models (LightGBM) are naturally capable of learning these non-linear relationships. Forcing a linear subtraction likely added noise or diluted the signal.

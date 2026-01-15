@@ -8,11 +8,18 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟡 Backlog
 
-### **EXP-21: Limit Order Entry Optimization (Short into Strength)**
-* **Hypothesis:** Based on EXP-12/16 findings of "Morning Fake-Outs" (price moves against signal initially), using a Limit Order slightly above Open (e.g., Open * 1.005) may improve entry price and Sharpe, despite lower fill rates.
-* **Goal:** Extract execution alpha by fading the initial morning volatility.
+(Empty)
 
 ## ⚫ Done
+
+### **EXP-21: Limit Order Entry Optimization (Short into Strength)**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Reject Limit Orders. Maintain Open Entry.
+*   **Key Findings:**
+    *   **Baseline:** 1.49% Avg Return, 5.46 Sharpe.
+    *   **Limit +0.5%:** 1.37% Avg Return, 4.90 Sharpe.
+    *   Waiting for a price improvement (+0.5% spike) resulted in **Adverse Selection**: we missed the best trades (those that dropped immediately) and filled trades on stocks showing strength.
+    *   **Conclusion:** The best short signals don't look back.
 
 ### **EXP-20: Relative Gap Features (Index Interaction)**
 *   **Result:** ❌ Failed (Hypothesis Rejected).
