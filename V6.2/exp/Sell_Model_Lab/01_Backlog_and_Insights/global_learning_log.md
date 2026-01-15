@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-23: EXP-18 Production Script Update (Position Sizing)
+*   **Lesson:** **Operationalizing Alpha.** The Tiered Position Sizing strategy (verified in EXP-17) was successfully integrated into the daily production script `production_daily_plan_v6_2_5_rc.py`.
+*   **Observation:** The system now automatically assigns position sizes (1.5x, 1.0x, 0.5x) based on the model's confidence probability. This removes manual intervention and ensures that high-conviction trades receive the capital allocation they deserve to maximize the Sharpe Ratio.
+*   **Action:** Ensure all future executions use `v6.2.5.rc` (or later) scripts to benefit from this logic.
+
 ## 2026-01-22: EXP-17 Confidence-Based Position Sizing
 *   **Lesson:** **Confidence Correlates with Alpha.** The LightGBM model's probability output (`predict_proba`) is a reliable indicator of trade quality. A tiered position sizing strategy (1.5x for High Prob, 1.0x for Medium, 0.5x for Low) significantly improved the Sharpe Ratio (6.24 vs 5.96) and reduced Max Drawdown by 17% compared to fixed sizing.
 *   **Observation:** The "Linear" sizing approach was too aggressive, increasing total return but also volatility, leading to a lower Sharpe Ratio. The "Tiered" approach struck the optimal balance, effectively "betting big" only when the model was most certain.
