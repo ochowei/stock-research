@@ -4,11 +4,19 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-23: RSI Period Sensitivity (Short-Term Mean Reversion)**
-* **Hypothesis:** The standard `RSI_14` is a medium-term swing indicator. Our strategy exploits overnight "Gap" overreactions, which are immediate and short-term events. A shorter-term RSI (e.g., `RSI_2`, `RSI_4`, or `ConnorsRSI`) may better capture the acute "overbought" state that leads to a successful gap fill than the smoothed RSI_14.
-* **Design:** Test `RSI_Period` = [2, 3, 4, 5, 7, 10] against the baseline 14 within the V6.4 framework.
+### **EXP-24: Gap Quality Filter (Volume & Context)**
+* **Hypothesis:** Not all gaps are equal. The low win rate (45%) suggests we are fading "strong" gaps (Breakaway Gaps) instead of "weak" gaps (Exhaustion Gaps). A filter based on Pre-Market Volume (relative to avg) or Opening Range Volatility might distinguish them.
+* **Design:** Test filters: `Rel_Vol_PreMarket > X`, `Gap_Size > 1%` (larger gaps revert more?), `Open_vs_High` (is Open near High?).
 
 ## ⚫ Done
+
+### **EXP-23: RSI Period Sensitivity (Short-Term Mean Reversion)**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Reject shorter RSI. Maintain RSI 14.
+*   **Key Findings:**
+    *   **RSI 4** (45.34%) marginally beat RSI 14 (44.20%) but both are well below the target 55% Win Rate.
+    *   Shorter periods (2, 3) degrade performance due to noise.
+    *   **Technical Lesson:** `yfinance` data quality issues and `pandas-ta` type strictness require robust pre-processing (explicit float casting) to avoid crashes.
 
 ### **EXP-22: Context-Aware Hyperparameter Optimization (Re-Tune)**
 *   **Result:** ❌ Failed (Hypothesis Rejected).
