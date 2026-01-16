@@ -1,5 +1,11 @@
 # Global Learning Log
 
+## 2026-01-29: EXP-24 Gap Quality Filter (Volume & Context)
+*   **Lesson:** **Magnitude is Alpha.** The long-standing belief that "Large Gaps (>2%) are Breakaway Gaps and should be avoided" was fundamentally incorrect for this strategy.
+*   **Observation:** Gaps larger than 3% achieved the highest Win Rate (57.3%) and Average Return (+0.68%) in the 2024-2025 period. These large extensions serve as powerful mean-reversion setups ("Exhaustion Gaps"), contrary to the fear that they indicate unstoppable momentum.
+*   **Nuance:** Extreme Volume (>3.0x Previous Day) *does* degrade performance (48.4% WR), supporting the idea that massive participation validates the move. However, moderate-high volume (1x-3x) combined with large gaps is the sweet spot.
+*   **Action:** Reject any logic that caps gap size. Instead, consider targeting large gaps more aggressively, potentially with a specialized model (EXP-25).
+
 ## 2026-01-28: EXP-22 Context-Aware Hyperparameter Optimization (Re-Tune)
 *   **Lesson:** **Robustness > Optimization.** The rigorous manual regularization parameters discovered in EXP-06 (Tech: Depth 3, Non-Tech: Unlimited) proved superior to automated Optuna tuning for the V6.2.4.RC architecture.
 *   **Observation:** The automated optimization process, driven by validation set metrics (2020-2023), selected deeper trees (Depth 11 for Tech) that overfitted to the training regime. When tested on 2024-2025 data, these "optimized" models underperformed the simpler, constrained baseline models.
