@@ -4,11 +4,19 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-24: Gap Quality Filter (Volume & Context)**
-* **Hypothesis:** Not all gaps are equal. The low win rate (45%) suggests we are fading "strong" gaps (Breakaway Gaps) instead of "weak" gaps (Exhaustion Gaps). A filter based on Pre-Market Volume (relative to avg) or Opening Range Volatility might distinguish them.
-* **Design:** Test filters: `Rel_Vol_PreMarket > X`, `Gap_Size > 1%` (larger gaps revert more?), `Open_vs_High` (is Open near High?).
+### **EXP-25: Large Gap Specialization (High Volatility Model)**
+*   **Hypothesis:** EXP-24 proved that Large Gaps (>3%) have a 57% Win Rate. However, general models might be under-fitting this specific regime by mixing it with small noise gaps. A dedicated model trained ONLY on Gaps > 2% might find cleaner signals.
+*   **Design:** Train a model on the subset `Gap_Pct > 0.02`. Compare against the General V6.2.4.RC model on the same subset.
 
 ## ⚫ Done
+
+### **EXP-24: Gap Quality Filter (Volume & Context)**
+*   **Result:** ✅ Success (Key Insight: Large Gaps are Better).
+*   **Outcome:** Reject "Cap Gaps". Target Large Gaps (>3%).
+*   **Key Findings:**
+    *   **Hypothesis Reversal:** The idea that "Large Gaps are Breakaway Gaps" was wrong. Gaps > 3% had the highest Win Rate (**57.3%**) and Return (+0.68%), behaving as "Exhaustion Gaps".
+    *   **Volume Nuance:** Extreme Volume (>3.0x) *did* degrade performance (48.4% WR), confirming that massive participation supports trend continuation.
+    *   **Sweet Spot:** Gaps > 2% with Volume 1x-3x are the golden setups.
 
 ### **EXP-23: RSI Period Sensitivity (Short-Term Mean Reversion)**
 *   **Result:** ❌ Failed (Hypothesis Rejected).
