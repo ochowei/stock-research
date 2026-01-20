@@ -1,5 +1,10 @@
 # Global Learning Log
 
+## 2026-01-30: EXP-25 Large Gap Specialization
+*   **Lesson:** **More Data > Better Data.** Attempting to train a specialized model on only "Large Gaps" (>2%) failed because the reduction in training samples (from ~100k to ~6k) caused overfitting that outweighed the benefit of regime specificity.
+*   **Observation:** The General V6.2.4.RC model (trained on all gaps > 0.5%) outperformed the Specialized High-Vol model even on the specialized test set (54.21% WR vs 52.29%). This proves the General model learns robust structural signals (Mean Reversion) that apply across the entire volatility spectrum.
+*   **Action:** Do not fragment the training data. Use the single, robust V6.2.4.RC architecture for all gap sizes.
+
 ## 2026-01-29: EXP-24 Gap Quality Filter (Volume & Context)
 *   **Lesson:** **Magnitude is Alpha.** The long-standing belief that "Large Gaps (>2%) are Breakaway Gaps and should be avoided" was fundamentally incorrect for this strategy.
 *   **Observation:** Gaps larger than 3% achieved the highest Win Rate (57.3%) and Average Return (+0.68%) in the 2024-2025 period. These large extensions serve as powerful mean-reversion setups ("Exhaustion Gaps"), contrary to the fear that they indicate unstoppable momentum.
@@ -44,7 +49,7 @@
 
 ## 2026-01-20: EXP-15 Crypto-Specific Ensemble (Clean Data Redux)
 *   **Lesson:** **Macro Overfitting in Niche Sectors.** Adding Bitcoin features (`BTC_Ret`, `BTC_Trend`) to a "Pure Crypto" stock pool (COIN, MSTR, RIOT) significantly *degraded* performance (Win Rate -4%) compared to a simple Base feature model.
-*   **Observation:** The macro features dominated feature importance, distracting the model from asset-specific price action signals (Gap, RSI) which were actually more predictive. This mirrors the "contaminated pool" failure of EXP-10 but confirms it wasn't just about data purity—it's a fundamental issue where external macro context injects noise into mean-reversion signals for these high-beta assets.
+*   **Observation:** The macro features dominated feature importance (Top 3), distracting the model from asset-specific price action signals (Gap, RSI) which were actually more predictive. This mirrors the "contaminated pool" failure of EXP-10 but confirms it wasn't just about data purity—it's a fundamental issue where external macro context injects noise into mean-reversion signals for these high-beta assets.
 *   **Action:** Do not build a specialized "Crypto Model" with BTC features. Treat crypto stocks as standard volatile assets using the Base (or Non-Tech) model.
 
 ## 2026-01-15: EXP-14 Delayed Entry Optimization
