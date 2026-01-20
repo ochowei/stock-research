@@ -4,11 +4,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which identified a
 
 ## 🟢 Ready to Start
 
-### **EXP-25: Large Gap Specialization (High Volatility Model)**
-*   **Hypothesis:** EXP-24 proved that Large Gaps (>3%) have a 57% Win Rate. However, general models might be under-fitting this specific regime by mixing it with small noise gaps. A dedicated model trained ONLY on Gaps > 2% might find cleaner signals.
-*   **Design:** Train a model on the subset `Gap_Pct > 0.02`. Compare against the General V6.2.4.RC model on the same subset.
+(Empty - Awaiting New Ideas)
 
 ## ⚫ Done
+
+### **EXP-25: Large Gap Specialization (High Volatility Model)**
+*   **Result:** ❌ Failed (Hypothesis Rejected).
+*   **Outcome:** Do not adopt. Continue using V6.2.4.RC.
+*   **Key Findings:**
+    *   **Baseline (V6.2.4.RC):** 54.21% Win Rate, +0.51% Avg Return on Large Gaps (>2%).
+    *   **Specialized Model:** 52.29% Win Rate, +0.26% Avg Return.
+    *   **Conclusion:** Specialization caused overfitting due to data scarcity (~6k samples vs ~100k). The general model generalizes better to high-volatility regimes than a dedicated model does.
 
 ### **EXP-24: Gap Quality Filter (Volume & Context)**
 *   **Result:** ✅ Success (Key Insight: Large Gaps are Better).
