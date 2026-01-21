@@ -402,21 +402,46 @@ def main():
         print("No valid signals generated (Check Gaps/Data).")
         return
 
-    results.sort(key=lambda x: (3 if "SELL" in x['Action'] else 1 if "WATCH" in x['Action'] else 0, x['Prob']), reverse=True)
+    # Sort Priority Logic (Adapted from V6.2.1)
+    def get_sort_priority(r):
+        action = r['Action']
+        if "SELL" in action: return 0      # Top Priority: Actionable Sells
+        if "WATCH" in action: return 1     # Second Priority: Watchlist
+        if "FLAT" in action: return 2      # Third Priority: Flat/Pass
+        if "SKIP" in action: return 3      # Last Priority: Blocked
+        return 4
 
-    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Prob':>6} {'Model':<12} {'Size':<6} {'Action':<20}"
-    print("-" * 140)
+    results.sort(key=lambda x: (get_sort_priority(x), -abs(x['Gap%'])))
+
+    # Header Definition
+    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Prob':>6} {'Model':<12} {'Size':<6} {'Action':<20} {'Note':<15}"
     print(header)
     print("-" * 140)
 
+    last_priority = -1
     for r in results:
-        prefix = ">> " if "SELL" in r['Action'] else "   "
-        print(f"{prefix}{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Prob']:.0%}   {r['Model']:<12} {r['Size']:<6} {r['Action']:<20}")
+        curr_priority = get_sort_priority(r)
+
+        # Section Separators
+        if curr_priority != last_priority:
+            if curr_priority == 0: print("-" * 40 + " [ 🚨 訊號區 (Actionable) ] " + "-" * 70)
+            if curr_priority == 1: print("-" * 40 + " [ 👁️ 觀察區 (Watchlist) ] " + "-" * 71)
+            if curr_priority == 2: print("-" * 40 + " [ 💤 盤整區 (Flat/Pass) ] " + "-" * 71)
+            if curr_priority == 3: print("-" * 40 + " [ 🛑 禁止區 (Trend/Block) ] " + "-" * 69)
+            last_priority = curr_priority
+
+        # Markers
+        marker = ""
+        if "Caution" in r['Action']: marker = "<--- ⚠️ VOL CAUTION"
+        elif "SELL" in r['Action'] and r['Prob'] > 0.60: marker = "<--- 🔥 HIGH CONVICTION"
+
+        # Formatted Output
+        print(f"{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Prob']:.0%}   {r['Model']:<12} {r['Size']:<6} {r['Action']:<20} {marker}")
 
     out_path = os.path.join(OUTPUT_DIR, f"daily_signals_v6.2.6_{date.today()}.csv")
     pd.DataFrame(results).to_csv(out_path, index=False)
     print("-" * 140)
-    print(f"[Saved] Report saved to: {out_path}")
+    print(f"Total Scanned: {processed_count} | [Saved] Report saved to: {out_path}")
 
 if __name__ == "__main__":
     main()
