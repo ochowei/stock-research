@@ -271,10 +271,14 @@ def main():
     non_tech_path = get_model_path('v6.2.4_rc_non_tech_model.joblib')
     tech_path = get_model_path('v6.2.4_rc_tech_model.joblib')
     crypto_path = get_model_path('crypto_model.joblib')
+    mom_path = get_model_path('momentum_model.joblib')
+    dip_path = get_model_path('dip_model.joblib')
 
     models = {}
     if non_tech_path: models['Non-Tech'] = joblib.load(non_tech_path)
     if tech_path: models['Tech'] = joblib.load(tech_path)
+    if mom_path: models['Mom'] = joblib.load(mom_path)
+    if dip_path: models['Dip'] = joblib.load(dip_path)
 
     crypto_model = None
     if crypto_path:
@@ -363,14 +367,25 @@ def main():
                     model_used = "Non-Tech"
 
             if feat_row is None:
-                print(f"Feat Row None for {ticker}")
+                # print(f"Feat Row None for {ticker}")
                 continue
 
             gap_pct = feat_row['Gap_Pct'].iloc[0]
             price = group.iloc[-1]['Close']
             vol_ratio = feat_row['Vol_Ratio'].iloc[0]
+            atr_pct = feat_row['ATR_Pct'].iloc[0]
+            dist_ma20 = feat_row['Dist_MA20'].iloc[0]
+            rsi_14 = feat_row['RSI_14'].iloc[0]
 
-            print(f"{ticker}: Gap {gap_pct:.4f}, Regime {regime_status}, Prob {prob:.2f}")
+            # Aux Models Predictions
+            mom_prob, dip_prob = 0.0, 0.0
+            try:
+                # Legacy Features: ['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX', 'Dist_MA20']
+                X_legacy = pd.DataFrame([[rsi_14, atr_pct, vol_ratio, gap_pct, curr_vix, dist_ma20]],
+                                      columns=['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX', 'Dist_MA20'])
+                if 'Mom' in models: mom_prob = models['Mom'].predict_proba(X_legacy)[0][1]
+                if 'Dip' in models: dip_prob = models['Dip'].predict_proba(X_legacy)[0][1]
+            except Exception: pass
 
             action, size = "FLAT", "-"
             if regime_status == "🛑 BLOCK":
@@ -389,6 +404,7 @@ def main():
             results.append({
                 'Ticker': ticker, 'Sector': sector_type, 'Regime': regime_status,
                 'Gap%': gap_pct, 'Price': price, 'Prob': prob,
+                'Mom%': mom_prob, 'Dip%': dip_prob, 'ATR%': atr_pct,
                 'Model': model_used, 'Size': size, 'Action': action, 'Vol_R': vol_ratio
             })
 
@@ -414,9 +430,9 @@ def main():
     results.sort(key=lambda x: (get_sort_priority(x), -abs(x['Gap%'])))
 
     # Header Definition
-    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Prob':>6} {'Model':<12} {'Size':<6} {'Action':<20} {'Note':<15}"
+    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6} {'Model':<12} {'Size':<6} {'Action':<20} {'Note':<15}"
     print(header)
-    print("-" * 140)
+    print("-" * 160)
 
     last_priority = -1
     for r in results:
@@ -424,10 +440,10 @@ def main():
 
         # Section Separators
         if curr_priority != last_priority:
-            if curr_priority == 0: print("-" * 40 + " [ 🚨 訊號區 (Actionable) ] " + "-" * 70)
-            if curr_priority == 1: print("-" * 40 + " [ 👁️ 觀察區 (Watchlist) ] " + "-" * 71)
-            if curr_priority == 2: print("-" * 40 + " [ 💤 盤整區 (Flat/Pass) ] " + "-" * 71)
-            if curr_priority == 3: print("-" * 40 + " [ 🛑 禁止區 (Trend/Block) ] " + "-" * 69)
+            if curr_priority == 0: print("-" * 50 + " [ 🚨 訊號區 (Actionable) ] " + "-" * 80)
+            if curr_priority == 1: print("-" * 50 + " [ 👁️ 觀察區 (Watchlist) ] " + "-" * 81)
+            if curr_priority == 2: print("-" * 50 + " [ 💤 盤整區 (Flat/Pass) ] " + "-" * 81)
+            if curr_priority == 3: print("-" * 50 + " [ 🛑 禁止區 (Trend/Block) ] " + "-" * 79)
             last_priority = curr_priority
 
         # Markers
@@ -436,7 +452,12 @@ def main():
         elif "SELL" in r['Action'] and r['Prob'] > 0.60: marker = "<--- 🔥 HIGH CONVICTION"
 
         # Formatted Output
-        print(f"{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Prob']:.0%}   {r['Model']:<12} {r['Size']:<6} {r['Action']:<20} {marker}")
+        sell_p = f"{r['Prob']:.0%}" if r['Prob'] > 0 else "-"
+        mom_p = f"{r['Mom%']:.0%}" if r['Mom%'] > 0 else "-"
+        dip_p = f"{r['Dip%']:.0%}" if r['Dip%'] > 0 else "-"
+        atr_p = f"{r['ATR%']*100:.1f}%"
+
+        print(f"{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {sell_p:>6} {mom_p:>6} {dip_p:>6} {atr_p:>6} {r['Model']:<12} {r['Size']:<6} {r['Action']:<20} {marker}")
 
     out_path = os.path.join(OUTPUT_DIR, f"daily_signals_v6.2.6_{date.today()}.csv")
     pd.DataFrame(results).to_csv(out_path, index=False)
