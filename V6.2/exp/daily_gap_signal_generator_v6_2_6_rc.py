@@ -70,6 +70,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Constants
 GAP_THRESHOLD = 0.005
+RIP_THRESHOLD = 0.03
+DIP_THRESHOLD = 0.03
+MOMENTUM_THRESHOLD = 0.53
+DIP_CONFIDENCE_LV = 0.50
+
 CRYPTO_TICKERS = ['COIN', 'MSTR', 'RIOT', 'MARA']
 US_HOLIDAYS = [
     '2025-01-01', '2025-01-20', '2025-02-17', '2025-04-18', '2025-05-26',
@@ -387,25 +392,56 @@ def main():
                 if 'Dip' in models: dip_prob = models['Dip'].predict_proba(X_legacy)[0][1]
             except Exception: pass
 
-            action, size = "FLAT", "-"
+            # --- Decision Logic (V6.2.1 + V6.2.6 Hybrid) ---
+            status, action, size = "Flat", "FLAT", "-"
+
             if regime_status == "🛑 BLOCK":
-                action = "SKIP (Trend)"
+                status, action = "🛑 BLOCK", "SKIP (Trend)"
             else:
+                # 1. GAP UP Logic
                 if gap_pct > GAP_THRESHOLD:
-                    if prob > 0.50:
-                        action = "SELL -> MOC"
-                        size = get_position_size(prob)
-                        if vol_ratio > 3.0: action += " (Vol Caution)"
-                    else:
-                        action = "WATCH"
+                    is_rip = gap_pct > RIP_THRESHOLD
+                    is_mom = mom_prob > MOMENTUM_THRESHOLD
+
+                    if is_rip:
+                        if is_mom:
+                            status, action = "🚀 ROCKET", "WATCH (Mom)"
+                        else:
+                            status = "🔴 SELL RIP"
+                            if prob > 0.50:
+                                action = "SELL -> MOC"
+                                size = get_position_size(prob)
+                                if vol_ratio > 3.0: action += " (Vol Caution)"
+                            else:
+                                action = "WATCH (Low Prob)"
+                    else: # Normal Gap Up
+                        if is_mom:
+                            status, action = "🟢 MOMENTUM", "WATCH (Mom)"
+                        else:
+                            status = "🔴 GAP UP"
+                            if prob > 0.50:
+                                action = "SELL -> MOC"
+                                size = get_position_size(prob)
+                                if vol_ratio > 3.0: action += " (Vol Caution)"
+                            else:
+                                action = "WATCH (Low Prob)"
+
+                # 2. GAP DOWN Logic (Dip Buy)
                 elif gap_pct < -GAP_THRESHOLD:
-                    action = "WATCH (Gap Down)"
+                    is_deep_dip = gap_pct < -DIP_THRESHOLD
+                    if is_deep_dip:
+                        if dip_prob > DIP_CONFIDENCE_LV:
+                            status, action = "🟢 SMART DIP", "BUY DIP"
+                        else:
+                            status, action = "🔵 WEAK DIP", "WATCH"
+                    else:
+                        status, action = "🟡 GAP DOWN", "WATCH"
 
             results.append({
                 'Ticker': ticker, 'Sector': sector_type, 'Regime': regime_status,
                 'Gap%': gap_pct, 'Price': price, 'Prob': prob,
                 'Mom%': mom_prob, 'Dip%': dip_prob, 'ATR%': atr_pct,
-                'Model': model_used, 'Size': size, 'Action': action, 'Vol_R': vol_ratio
+                'Model': model_used, 'Size': size, 'Action': action, 'Status': status, 'Vol_R': vol_ratio
             })
 
         except Exception as e:
@@ -422,6 +458,7 @@ def main():
     def get_sort_priority(r):
         action = r['Action']
         if "SELL" in action: return 0      # Top Priority: Actionable Sells
+        if "BUY" in action: return 0       # Top Priority: Actionable Buys
         if "WATCH" in action: return 1     # Second Priority: Watchlist
         if "FLAT" in action: return 2      # Third Priority: Flat/Pass
         if "SKIP" in action: return 3      # Last Priority: Blocked
@@ -430,9 +467,9 @@ def main():
     results.sort(key=lambda x: (get_sort_priority(x), -abs(x['Gap%'])))
 
     # Header Definition
-    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6} {'Model':<12} {'Size':<6} {'Action':<20} {'Note':<15}"
+    header = f"{'Ticker':<8} {'Sector':<10} {'Regime':<12} {'Gap%':>8} {'Price':>9} {'Status':<16} {'Action':<18} {'Model':<10} {'Sell%':>6} {'Mom%':>6} {'Dip%':>6} {'ATR%':>6} {'Vol':>5} {'Size':<6} {'Note':<15}"
     print(header)
-    print("-" * 160)
+    print("-" * 185)
 
     last_priority = -1
     for r in results:
@@ -440,24 +477,26 @@ def main():
 
         # Section Separators
         if curr_priority != last_priority:
-            if curr_priority == 0: print("-" * 50 + " [ 🚨 訊號區 (Actionable) ] " + "-" * 80)
-            if curr_priority == 1: print("-" * 50 + " [ 👁️ 觀察區 (Watchlist) ] " + "-" * 81)
-            if curr_priority == 2: print("-" * 50 + " [ 💤 盤整區 (Flat/Pass) ] " + "-" * 81)
-            if curr_priority == 3: print("-" * 50 + " [ 🛑 禁止區 (Trend/Block) ] " + "-" * 79)
+            if curr_priority == 0: print("-" * 60 + " [ 🚨 訊號區 (Actionable) ] " + "-" * 95)
+            if curr_priority == 1: print("-" * 60 + " [ 👁️ 觀察區 (Watchlist) ] " + "-" * 96)
+            if curr_priority == 2: print("-" * 60 + " [ 💤 盤整區 (Flat/Pass) ] " + "-" * 96)
+            if curr_priority == 3: print("-" * 60 + " [ 🛑 禁止區 (Trend/Block) ] " + "-" * 94)
             last_priority = curr_priority
 
         # Markers
         marker = ""
-        if "Caution" in r['Action']: marker = "<--- ⚠️ VOL CAUTION"
-        elif "SELL" in r['Action'] and r['Prob'] > 0.60: marker = "<--- 🔥 HIGH CONVICTION"
+        if "Caution" in r['Action']: marker = "<--- ⚠️ VOL"
+        elif "SELL" in r['Action'] and r['Prob'] > 0.60: marker = "<--- 🔥 HOT"
+        elif "BUY" in r['Action']: marker = "<--- 🟢 BUY"
 
         # Formatted Output
         sell_p = f"{r['Prob']:.0%}" if r['Prob'] > 0 else "-"
         mom_p = f"{r['Mom%']:.0%}" if r['Mom%'] > 0 else "-"
         dip_p = f"{r['Dip%']:.0%}" if r['Dip%'] > 0 else "-"
         atr_p = f"{r['ATR%']*100:.1f}%"
+        vol_r = f"{r['Vol_R']:.1f}x"
 
-        print(f"{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {sell_p:>6} {mom_p:>6} {dip_p:>6} {atr_p:>6} {r['Model']:<12} {r['Size']:<6} {r['Action']:<20} {marker}")
+        print(f"{r['Ticker']:<8} {r['Sector']:<10} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Status']:<16} {r['Action']:<18} {r['Model']:<10} {sell_p:>6} {mom_p:>6} {dip_p:>6} {atr_p:>6} {vol_r:>5} {r['Size']:<6} {marker}")
 
     out_path = os.path.join(OUTPUT_DIR, f"daily_signals_v6.2.6_{date.today()}.csv")
     pd.DataFrame(results).to_csv(out_path, index=False)
