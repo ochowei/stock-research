@@ -177,9 +177,13 @@ def get_sector_type(ticker, sector_map):
 
 def prepare_benchmark(bm_df, prefix):
     df = bm_df.copy()
+    if len(df) < 20: return df # Not enough data for indicators
+
     df['Prev_Close'] = df['Close'].shift(1)
     df[f'{prefix}_Gap_Pct'] = (df['Open'] - df['Prev_Close']) / df['Prev_Close']
-    df[f'{prefix}_RSI_14'] = ta.rsi(df['Close'], length=14).shift(1)
+
+    rsi = ta.rsi(df['Close'], length=14)
+    df[f'{prefix}_RSI_14'] = rsi.shift(1) if rsi is not None else np.nan
 
     close_filled = df['Close'].ffill()
     sum_prev_19 = close_filled.rolling(19).sum().shift(1)
@@ -326,7 +330,9 @@ def main():
 
         # Date Sync
         target_date = latest_crypto if sector_type == 'Crypto' else latest_equity
-        if group['Date'].max() != target_date: continue
+        if group['Date'].max() != target_date:
+            print(f"Date Mismatch {ticker}: {group['Date'].max().date()} vs {target_date.date()}")
+            continue
 
         processed_count += 1
         regime_status, er_val, _ = get_regime_decision(group, ticker)
@@ -337,30 +343,34 @@ def main():
             if sector_type == 'Tech':
                 feat_row = build_features_latest(group.set_index('Date'), qqq_prep, 'QQQ', TECH_FEATURES)
                 if feat_row is not None:
-                    prob = models['Tech'].predict_proba(pd.DataFrame([feat_row[BASE_FEATURES + TECH_FEATURES]]))[0][1]
+                    prob = models['Tech'].predict_proba(feat_row[BASE_FEATURES + TECH_FEATURES])[0][1]
                     model_used = "Tech"
             elif sector_type == 'Crypto':
                 if crypto_model:
                     feat_row = build_features_latest(group.set_index('Date'), btc_prep, 'BTC', CRYPTO_FEATURES)
                     if feat_row is not None:
-                        prob = crypto_model.predict_proba(pd.DataFrame([feat_row[BASE_FEATURES + CRYPTO_FEATURES]]))[0][1]
+                        prob = crypto_model.predict_proba(feat_row[BASE_FEATURES + CRYPTO_FEATURES])[0][1]
                         model_used = "Crypto"
                 else:
                     feat_row = build_features_latest(group.set_index('Date'), spy_prep, 'SPY', NON_TECH_FEATURES, corr_name_override='Market_Corr')
                     if feat_row is not None:
-                        prob = models['Non-Tech'].predict_proba(pd.DataFrame([feat_row[BASE_FEATURES + NON_TECH_FEATURES]]))[0][1]
+                        prob = models['Non-Tech'].predict_proba(feat_row[BASE_FEATURES + NON_TECH_FEATURES])[0][1]
                         model_used = "Non-Tech(F)"
             else:
                 feat_row = build_features_latest(group.set_index('Date'), spy_prep, 'SPY', NON_TECH_FEATURES)
                 if feat_row is not None:
-                    prob = models['Non-Tech'].predict_proba(pd.DataFrame([feat_row[BASE_FEATURES + NON_TECH_FEATURES]]))[0][1]
+                    prob = models['Non-Tech'].predict_proba(feat_row[BASE_FEATURES + NON_TECH_FEATURES])[0][1]
                     model_used = "Non-Tech"
 
-            if feat_row is None: continue
+            if feat_row is None:
+                print(f"Feat Row None for {ticker}")
+                continue
 
-            gap_pct = feat_row['Gap_Pct']
+            gap_pct = feat_row['Gap_Pct'].iloc[0]
             price = group.iloc[-1]['Close']
-            vol_ratio = feat_row['Vol_Ratio']
+            vol_ratio = feat_row['Vol_Ratio'].iloc[0]
+
+            print(f"{ticker}: Gap {gap_pct:.4f}, Regime {regime_status}, Prob {prob:.2f}")
 
             action, size = "FLAT", "-"
             if regime_status == "🛑 BLOCK":
@@ -382,7 +392,9 @@ def main():
                 'Model': model_used, 'Size': size, 'Action': action, 'Vol_R': vol_ratio
             })
 
-        except Exception: continue
+        except Exception as e:
+            print(f"Error {ticker}: {e}")
+            continue
 
     print(f">>> Scanned {processed_count} tickers. Found {len(results)} potential setups.")
 
