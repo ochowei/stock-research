@@ -31,11 +31,10 @@ RESOURCE_DIR = os.path.join(BASE_DIR, '..', 'resource')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 
 # Experiment Paths (Source of Truth)
-# Correct Path Logic: BASE_DIR is V6.2/exp/. Sell_Model_Lab is inside V6.2/exp/.
 EXP_DIR = os.path.join(BASE_DIR, 'Sell_Model_Lab', '03_Experiments', 'EXP_18_Production_Script_Update', '03_Output')
 SECTOR_MAP_PATH = os.path.join(EXP_DIR, 'sector_map.json')
 
-# Model Paths - Try specific RC files first, fall back to generic names
+# Model Paths
 TECH_MODEL_CANDIDATES = [
     os.path.join(EXP_DIR, 'v6.2.4_rc_tech_model.joblib'),
     os.path.join(EXP_DIR, 'model_tech.joblib')
@@ -48,12 +47,12 @@ NON_TECH_MODEL_CANDIDATES = [
 def resolve_model_path(candidates):
     for path in candidates:
         if os.path.exists(path): return path
-    return candidates[0] # Default to first
+    return candidates[0]
 
 TECH_MODEL_PATH = resolve_model_path(TECH_MODEL_CANDIDATES)
 NON_TECH_MODEL_PATH = resolve_model_path(NON_TECH_MODEL_CANDIDATES)
 
-# Legacy Models (for console display context)
+# Legacy Models
 MOM_MODEL_PATH = os.path.join(OUTPUT_DIR, 'momentum_model.joblib')
 DIP_MODEL_PATH = os.path.join(OUTPUT_DIR, 'dip_model.joblib')
 
@@ -75,7 +74,7 @@ BASE_FEATURES = ['Gap_Pct', 'RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Dist_MA20']
 TECH_FEATURES = ['QQQ_Gap_Pct', 'QQQ_RSI_14', 'QQQ_Dist_MA20', 'Sector_Corr']
 NON_TECH_FEATURES = ['SPY_Gap_Pct', 'SPY_RSI_14', 'SPY_Dist_MA20', 'Market_Corr']
 
-# US Holidays 2026 (Updated for current context)
+# US Holidays 2026
 US_HOLIDAYS = [
     '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03', '2026-05-25',
     '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25'
@@ -85,7 +84,6 @@ US_HOLIDAYS = [
 
 def load_tickers_and_tags():
     tags_map = {}
-    # Prioritize 2026 files if they exist, else fallback to 2025
     asset_file = '2026_final_asset_pool.json' if os.path.exists(os.path.join(RESOURCE_DIR, '2026_final_asset_pool.json')) else ASSET_POOL_FILE
     holding_file = '2026_holding_asset_pool.json' if os.path.exists(os.path.join(RESOURCE_DIR, '2026_holding_asset_pool.json')) else HOLDING_POOL_FILE
 
@@ -113,7 +111,19 @@ def load_sector_map():
 def get_current_vix():
     try:
         df = yf.download("^VIX", period="5d", interval="1d", progress=False)
-        return float(df['Close'].iloc[-1]) if not df.empty else 20.0
+        if df.empty: return 20.0
+
+        # Robust extraction of the scalar value
+        close_col = df['Close']
+        if isinstance(close_col, pd.DataFrame):
+            # If MultiIndex (e.g., Close -> ^VIX), take the first column
+            val = close_col.iloc[-1, 0]
+        else:
+            # Series
+            val = close_col.iloc[-1]
+
+        # Convert to float safely (handles numpy types)
+        return float(val.item()) if hasattr(val, 'item') else float(val)
     except Exception as e:
         print(f"[Error] VIX download failed: {e}")
         return 20.0
@@ -134,18 +144,15 @@ def get_calendar_status():
     except: return "Unknown", False
 
 def download_data(tickers):
-    # Separate Benchmarks and Tickers
     benchmarks = ['QQQ', 'SPY']
     unique_tickers = sorted(list(set([t for t in tickers if t not in benchmarks])))
-
     daily_dfs = []
     intra_dfs = []
 
-    # --- Phase 1: Benchmarks (QQQ, SPY) ---
+    # --- Phase 1: Benchmarks ---
     print(f">>> Downloading Benchmarks ({', '.join(benchmarks)})...")
     daily_bm = pd.DataFrame()
     bm_success = False
-
     for attempt in range(3):
         try:
             daily_bm = yf.download(benchmarks, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
@@ -157,11 +164,7 @@ def download_data(tickers):
                 print(f"[Warning] Benchmarks download returned empty. Attempt {attempt + 1}/3")
         except Exception as e:
             print(f"[Error] Benchmarks download failed: {e}")
-
-        if attempt < 2:
-            wait = 10 * (attempt + 1)
-            print(f"Waiting {wait}s before retry...")
-            time.sleep(wait)
+        if attempt < 2: time.sleep(2)
 
     if not bm_success:
         print("[Critical] Failed to download Benchmarks (QQQ, SPY). Aborting.")
@@ -174,17 +177,13 @@ def download_data(tickers):
     for i in range(total_batches):
         batch = unique_tickers[i*batch_size : (i+1)*batch_size]
         print(f">>> Processing Batch {i+1}/{total_batches} ({len(batch)} tickers)...")
-
         batch_daily = pd.DataFrame()
         batch_intra = pd.DataFrame()
         batch_success = False
 
         for attempt in range(3):
             try:
-                # Daily
                 batch_daily = yf.download(batch, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
-
-                # Intra (Only for actual tickers, not benchmarks)
                 batch_intra = yf.download(batch, period="5d", interval="1m", group_by='ticker', prepost=True, progress=False, auto_adjust=True)
 
                 if not batch_daily.empty:
@@ -194,48 +193,28 @@ def download_data(tickers):
                             batch_daily.columns = pd.MultiIndex.from_product([batch, batch_daily.columns])
                         if not batch_intra.empty and not isinstance(batch_intra.columns, pd.MultiIndex):
                             batch_intra.columns = pd.MultiIndex.from_product([batch, batch_intra.columns])
-
                     daily_dfs.append(batch_daily)
-                    if not batch_intra.empty:
-                        intra_dfs.append(batch_intra)
-
+                    if not batch_intra.empty: intra_dfs.append(batch_intra)
                     batch_success = True
                     break
-                else:
-                    print(f"[Warning] Batch {i+1} empty. Retrying...")
-
             except Exception as e:
                 print(f"[Error] Batch {i+1} failed: {e}")
+            if attempt < 2: time.sleep(2)
 
-            if attempt < 2:
-                wait = 10 * (attempt + 1)
-                print(f"Waiting {wait}s before retry...")
-                time.sleep(wait)
-
-        if not batch_success:
-            print(f"[Error] Skipping Batch {i+1} after max retries.")
-
-        # Random Delay between batches
-        if i < total_batches - 1:
-            sleep_time = random.randint(2, 5)
-            # print(f"Sleeping {sleep_time}s...")
-            time.sleep(sleep_time)
+        if not batch_success: print(f"[Error] Skipping Batch {i+1} after max retries.")
+        if i < total_batches - 1: time.sleep(random.randint(1, 3))
 
     # --- Phase 3: Merge ---
     print(">>> Merging Data...")
     daily_all = pd.DataFrame()
     intra_all = pd.DataFrame()
-
     try:
         if daily_dfs:
             daily_all = pd.concat(daily_dfs, axis=1)
-            # Drop duplicates if any
             daily_all = daily_all.loc[:, ~daily_all.columns.duplicated()]
-
         if intra_dfs:
             intra_all = pd.concat(intra_dfs, axis=1)
             intra_all = intra_all.loc[:, ~intra_all.columns.duplicated()]
-
     except Exception as e:
         print(f"[Error] Data merge failed: {e}")
         return pd.DataFrame(), pd.DataFrame()
@@ -244,11 +223,10 @@ def download_data(tickers):
 
 def prepare_benchmark(bm_df, prefix):
     df = bm_df.copy()
-    if len(df) < 50: return df # Not enough data
+    if len(df) < 50: return df
     df['Prev_Close'] = df['Close'].shift(1)
     df[f'{prefix}_Gap_Pct'] = (df['Open'] - df['Prev_Close']) / df['Prev_Close']
     df[f'{prefix}_RSI_14'] = ta.rsi(df['Close'], length=14).shift(1)
-
     close_filled = df['Close'].ffill()
     sum_prev_19 = close_filled.rolling(19).sum().shift(1)
     open_p = df['Open'].fillna(df['Close'])
@@ -257,12 +235,9 @@ def prepare_benchmark(bm_df, prefix):
     return df
 
 def build_features_latest(df, bm_df, prefix, bm_features):
-    """Builds features for the LAST row only, matching EXP-18 logic"""
     if len(df) < 50: return None
-
     df = df.sort_index().copy()
 
-    # Indicators
     df['Prev_Close'] = df['Close'].shift(1)
     df['Prev_Vol'] = df['Volume'].shift(1)
     df['RSI_14'] = ta.rsi(df['Close'], length=14).shift(1)
@@ -281,22 +256,16 @@ def build_features_latest(df, bm_df, prefix, bm_features):
     last_idx = df.index[-1]
     row = df.iloc[[-1]].copy()
 
-    # BM Features
-    if last_idx not in bm_df.index:
-        # Fallback to last available
-        bm_row = bm_df.iloc[[-1]]
-    else:
-        bm_row = bm_df.loc[[last_idx]]
+    if last_idx not in bm_df.index: bm_row = bm_df.iloc[[-1]]
+    else: bm_row = bm_df.loc[[last_idx]]
 
     for f in bm_features:
         if 'Corr' not in f and f in bm_row.columns:
             row[f] = bm_row[f].values[0]
 
-    # Correlation
     common_idx = df.index.intersection(bm_df.index)
     df_sub = df.loc[common_idx]
     bm_sub = bm_df.loc[common_idx]
-
     if len(df_sub) > 20:
         aligned_close = pd.concat([df_sub['Close'], bm_sub['Close']], axis=1)
         corr = aligned_close.iloc[:,0].rolling(20).corr(aligned_close.iloc[:,1]).shift(1)
@@ -321,7 +290,6 @@ def generate_report():
     print(f">>> [Market Context] 📅 Calendar: {cal_status} | VIX: {curr_vix:.1f}")
     print("-" * 155)
 
-    # Load Models
     models = {
         'mom': joblib.load(MOM_MODEL_PATH) if os.path.exists(MOM_MODEL_PATH) else None,
         'dip': joblib.load(DIP_MODEL_PATH) if os.path.exists(DIP_MODEL_PATH) else None,
@@ -331,8 +299,6 @@ def generate_report():
 
     if models['tech'] is None or models['non_tech'] is None:
         print("[Error] Critical models (Tech/Non-Tech) missing. Check paths.")
-        print(f"Tech: {TECH_MODEL_PATH}")
-        print(f"Non-Tech: {NON_TECH_MODEL_PATH}")
         return
 
     sector_map = load_sector_map()
@@ -340,32 +306,16 @@ def generate_report():
     daily_data, intra_data = download_data(tickers)
 
     if daily_data.empty:
-        print("[Critical] No data downloaded for any ticker.")
-        failed_tickers = [{'Ticker': t, 'Reason': 'Download Failed (All)'} for t in tickers]
-        # Print Anomaly List and Exit
-        print("\n⚠️  Data Anomaly List")
-        print("-" * 60)
-        print(f"{'Ticker':<10} {'Reason':<40}")
-        print("-" * 60)
-        for f in failed_tickers:
-            print(f"{f['Ticker']:<10} {f['Reason']:<40}")
-        print("-" * 60)
+        print("[Critical] No data downloaded.")
         return
 
-    # Prepare Benchmark Data
     try:
-        # Check if QQQ/SPY exist
         if isinstance(daily_data.columns, pd.MultiIndex):
             qqq_df = daily_data['QQQ'].dropna(how='all') if 'QQQ' in daily_data.columns.get_level_values(0) else pd.DataFrame()
             spy_df = daily_data['SPY'].dropna(how='all') if 'SPY' in daily_data.columns.get_level_values(0) else pd.DataFrame()
         else:
-            # Single ticker case usually implies we requested one ticker or QQQ/SPY only.
-            # If we requested multiple, yfinance returns MultiIndex.
-            qqq_df = pd.DataFrame() # Fallback
+            qqq_df = pd.DataFrame()
             spy_df = pd.DataFrame()
-
-        if qqq_df.empty or spy_df.empty:
-             print("[Warning] QQQ or SPY data missing. Benchmark features may be incomplete.")
 
         qqq_prep = prepare_benchmark(qqq_df, 'QQQ') if not qqq_df.empty else pd.DataFrame()
         spy_prep = prepare_benchmark(spy_df, 'SPY') if not spy_df.empty else pd.DataFrame()
@@ -378,117 +328,98 @@ def generate_report():
 
     for t in tickers:
         try:
-            # Handle Single Level Column if only one ticker (unlikely due to QQQ/SPY but safe to check)
             if isinstance(daily_data.columns, pd.MultiIndex):
                 if t not in daily_data.columns.get_level_values(0):
-                    failed_tickers.append({'Ticker': t, 'Reason': 'Data Missing in Batch Download'})
+                    failed_tickers.append({'Ticker': t, 'Reason': 'Data Missing'})
                     continue
                 df_t_daily = daily_data[t].copy()
             else:
-                # Fallback for single ticker download scenario
-                if t != daily_data.name and t != 'QQQ' and t != 'SPY': # Heuristic check
-                     # If names don't match (and not testing QQQ/SPY explicitly), it's missing
-                     pass
+                if t != daily_data.name and t != 'QQQ' and t != 'SPY': pass
                 df_t_daily = daily_data.copy()
 
-            if df_t_daily.empty:
-                failed_tickers.append({'Ticker': t, 'Reason': 'Download Failed / Empty Data'})
-                continue
-
-            if len(df_t_daily) < 50:
-                failed_tickers.append({'Ticker': t, 'Reason': f'Insufficient Data (Rows={len(df_t_daily)} < 50)'})
+            if df_t_daily.empty or len(df_t_daily) < 50:
+                failed_tickers.append({'Ticker': t, 'Reason': 'Insufficient Data'})
                 continue
 
             df_t_intra = pd.DataFrame()
             if not intra_data.empty and isinstance(intra_data.columns, pd.MultiIndex) and t in intra_data.columns.get_level_values(0):
                  df_t_intra = intra_data[t]
 
-            # Basic Metrics for Display (simpler calculation like v6.2.1)
-            prev_close = float(df_t_daily['Close'].iloc[-2]) # Use yesterday for ref
-            curr_price = float(df_t_daily['Close'].iloc[-1]) # Today's current/close
-
-            # If intra available, update current price
+            prev_close = float(df_t_daily['Close'].iloc[-2])
+            curr_price = float(df_t_daily['Close'].iloc[-1])
             if not df_t_intra.empty:
                 df_m = df_t_intra.dropna(subset=['Close'])
                 if not df_m.empty: curr_price = float(df_m['Close'].iloc[-1])
 
-            # Use Open for Gap calculation as per model training
             open_price = float(df_t_daily['Open'].iloc[-1])
             gap_pct = (open_price - prev_close) / prev_close
-
-            # ATR/RSI for display (using simple method from v6.2.1)
             atr_val = ta.atr(df_t_daily['High'], df_t_daily['Low'], df_t_daily['Close'], length=14).iloc[-2]
             atr_pct = atr_val / prev_close
 
-            # Regime
             regime_status, er_val, _ = get_regime_decision(df_t_daily, t)
-
-            # Determine Sector and Model
             sector = sector_map.get(t, 'Unknown')
             is_tech = (sector == 'Technology')
 
-            # Build Features for Prediction (EXP-18 Logic)
             feat_row = None
-            if is_tech:
-                feat_row = build_features_latest(df_t_daily, qqq_prep, 'QQQ', TECH_FEATURES)
-            else:
-                feat_row = build_features_latest(df_t_daily, spy_prep, 'SPY', NON_TECH_FEATURES)
+            if is_tech: feat_row = build_features_latest(df_t_daily, qqq_prep, 'QQQ', TECH_FEATURES)
+            else: feat_row = build_features_latest(df_t_daily, spy_prep, 'SPY', NON_TECH_FEATURES)
 
             if feat_row is None:
-                failed_tickers.append({'Ticker': t, 'Reason': 'Feature Building Failed / Benchmark Data Issue'})
+                failed_tickers.append({'Ticker': t, 'Reason': 'Feature Building Failed'})
                 continue
 
-            # AI Prediction
             probs = {}
-
-            # Main Sell Model
             sell_prob = 0.0
+
+            # Safe Float Conversion for Prediction Inputs
             if is_tech:
-                X = feat_row[BASE_FEATURES + TECH_FEATURES]
+                X = feat_row[BASE_FEATURES + TECH_FEATURES].astype(float)
                 sell_prob = models['tech'].predict_proba(X)[0][1]
             else:
-                X = feat_row[BASE_FEATURES + NON_TECH_FEATURES]
+                X = feat_row[BASE_FEATURES + NON_TECH_FEATURES].astype(float)
                 sell_prob = models['non_tech'].predict_proba(X)[0][1]
 
             probs['sell'] = f"{sell_prob:.0%}"
-            probs['sell_val'] = sell_prob
 
-            # Legacy Models (Mom/Dip)
-            legacy_feats = pd.DataFrame([[
-                feat_row['RSI_14'].iloc[0],
-                feat_row['ATR_Pct'].iloc[0],
-                feat_row['Vol_Ratio'].iloc[0],
-                feat_row['Gap_Pct'].iloc[0],
-                curr_vix,
-                feat_row['Dist_MA20'].iloc[0]
-            ]], columns=['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX', 'Dist_MA20'])
+            # Legacy Models Features Construction
+            try:
+                legacy_vals = [
+                    feat_row['RSI_14'].iloc[0],
+                    feat_row['ATR_Pct'].iloc[0],
+                    feat_row['Vol_Ratio'].iloc[0],
+                    feat_row['Gap_Pct'].iloc[0],
+                    curr_vix,
+                    feat_row['Dist_MA20'].iloc[0]
+                ]
+                # Coerce to pure floats to avoid object/mixed-type errors in sklearn/xgb
+                legacy_vals = [float(x) if x is not None and not pd.isna(x) else 0.0 for x in legacy_vals]
 
-            if models['mom']:
-                try: probs['mom'] = f"{models['mom'].predict_proba(legacy_feats.iloc[:, :5])[0][1]:.0%}"
-                except: probs['mom'] = "-"
-            else: probs['mom'] = "-"
+                legacy_feats = pd.DataFrame([legacy_vals], columns=['RSI_14', 'ATR_Pct', 'Vol_Ratio', 'Gap_Pct', 'VIX', 'Dist_MA20'])
+                # Explicitly cast to float
+                legacy_feats = legacy_feats.astype(float)
 
-            if models['dip']:
-                try:
+                if models['mom']:
+                    probs['mom'] = f"{models['mom'].predict_proba(legacy_feats.iloc[:, :5])[0][1]:.0%}"
+                else: probs['mom'] = "-"
+
+                if models['dip']:
                     p = models['dip'].predict_proba(legacy_feats)[0][1]
                     probs['dip'] = f"{p:.0%}"
                     probs['dip_val'] = p
-                except Exception as e:
-                    print(f"[{t}] Dip model error: {e}")
+                else:
                     probs['dip'] = "-"
                     probs['dip_val'] = 0.0
-            else:
+            except Exception as e:
+                # Catch feature construction/prediction errors for legacy models
+                # print(f"[{t}] Legacy model error: {e}")
+                probs['mom'] = "-"
                 probs['dip'] = "-"
                 probs['dip_val'] = 0.0
 
-            # Position Sizing
             pos_size = get_position_size(sell_prob)
-
-            # Decision Logic
             status, action = "Flat", "-"
             legacy_dip_triggered = False
 
-            # Gap Quality Filter (EXP-24)
             vol_ratio = feat_row['Vol_Ratio'].iloc[0]
             high_vol_warning = vol_ratio > 3.0
 
@@ -496,17 +427,12 @@ def generate_report():
                 status, action = "🛑 BLOCK (Trendy)", "SKIP"
             else:
                 if gap_pct > RIP_THRESHOLD:
-                    # Large Gap Logic
-                    status, action = "🚀 ROCKET", "HOLD/BUY" # Default for massive gaps often momentum
-                    if sell_prob > 0.60:
-                        status, action = "🔴 SELL RIP", "MOC (Strong)"
-                    elif sell_prob > 0.50:
-                        status, action = "🔴 SELL RIP", "MOC"
+                    status, action = "🚀 ROCKET", "HOLD/BUY"
+                    if sell_prob > 0.60: status, action = "🔴 SELL RIP", "MOC (Strong)"
+                    elif sell_prob > 0.50: status, action = "🔴 SELL RIP", "MOC"
                 elif gap_pct > current_gap_threshold:
-                    if sell_prob > 0.50:
-                        status, action = "🔴 GAP UP", "MOC"
-                    else:
-                        status, action = "🟢 MOMENTUM", "HOLD"
+                    if sell_prob > 0.50: status, action = "🔴 GAP UP", "MOC"
+                    else: status, action = "🟢 MOMENTUM", "HOLD"
                 elif gap_pct < -DIP_THRESHOLD:
                     status, action = "🟢 SMART DIP", "WATCH"
                     if probs.get('dip_val', 0.0) > DIP_CONFIDENCE_LV:
@@ -516,7 +442,6 @@ def generate_report():
                     status, action = "🟡 GAP DOWN", "HOLD"
 
             is_held = 'Held' in tags_map.get(t, set())
-
             note = ""
             if high_vol_warning: note = "⚠️ High_Vol"
             if legacy_dip_triggered: note += " [Legacy-Dip]"
@@ -535,10 +460,8 @@ def generate_report():
 
         except Exception as e:
             failed_tickers.append({'Ticker': t, 'Reason': f'Runtime Error: {str(e)}'})
-            # print(f"Error processing {t}: {e}")
             continue
 
-    # --- Sorting and Output ---
     def get_sort_priority(r):
         if 'MOC' in r['Action'] or 'SELL' in r['Status']: return 0
         if r['Action'] in ['HOLD', 'WATCH']: return 1
@@ -559,12 +482,9 @@ def generate_report():
             if curr_priority == 2: print("-" * 45 + " [ FLAT / NO SIGNAL ] " + "-" * 88)
             if curr_priority == 3: print("-" * 45 + " [ BLOCKED ] " + "-" * 95)
             last_priority = curr_priority
-
         print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Status']:<16} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}% {r['Vol']:>5} {r['Size']:>5} {r['Note']:<15}")
 
     print("-" * 155)
-
-    # Print Data Anomaly List
     if failed_tickers:
         print("\n⚠️  Data Anomaly List")
         print("-" * 60)
