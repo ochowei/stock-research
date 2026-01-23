@@ -1,0 +1,2 @@
+Ticker,Tag,Regime,Gap%,Price,Status,Action,Sell%,Mom%,Dip%,ATR%,Vol,Size,Note
+TEST_DIP,,✅ PASS,-0.05,95.0,🟢 SMART DIP,BUY OPEN,90%,90%,90%,0.1,1.0x,-,[Legacy-Dip] [Non-Tech]
