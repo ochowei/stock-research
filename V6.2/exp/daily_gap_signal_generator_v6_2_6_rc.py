@@ -113,7 +113,9 @@ def get_current_vix():
     try:
         df = yf.download("^VIX", period="5d", interval="1d", progress=False)
         return float(df['Close'].iloc[-1]) if not df.empty else 20.0
-    except: return 20.0
+    except Exception as e:
+        print(f"[Error] VIX download failed: {e}")
+        return 20.0
 
 def get_calendar_status():
     try:
@@ -133,13 +135,26 @@ def get_calendar_status():
 def download_data(tickers):
     # Ensure QQQ and SPY are included
     all_tickers = list(set(tickers + ['QQQ', 'SPY']))
-    try:
-        daily = yf.download(all_tickers, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
-        intra = yf.download(tickers, period="5d", interval="1m", group_by='ticker', prepost=True, progress=False, auto_adjust=True)
-        return daily, intra
-    except Exception as e:
-        print(f"[Error] Download failed: {e}")
-        return pd.DataFrame(), pd.DataFrame()
+    daily = pd.DataFrame()
+    intra = pd.DataFrame()
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            daily = yf.download(all_tickers, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
+            intra = yf.download(tickers, period="5d", interval="1m", group_by='ticker', prepost=True, progress=False, auto_adjust=True)
+
+            if not daily.empty:
+                return daily, intra
+            else:
+                print(f"[Warning] Download attempt {attempt + 1} returned empty data. Retrying...")
+        except Exception as e:
+            print(f"[Error] Download attempt {attempt + 1} failed: {e}")
+
+        if attempt < max_retries - 1:
+            time.sleep(2)
+
+    return daily, intra
 
 def prepare_benchmark(bm_df, prefix):
     df = bm_df.copy()
@@ -238,29 +253,65 @@ def generate_report():
     tickers, tags_map = load_tickers_and_tags()
     daily_data, intra_data = download_data(tickers)
 
+    if daily_data.empty:
+        print("[Critical] No data downloaded for any ticker.")
+        failed_tickers = [{'Ticker': t, 'Reason': 'Download Failed (All)'} for t in tickers]
+        # Print Anomaly List and Exit
+        print("\n⚠️  Data Anomaly List")
+        print("-" * 60)
+        print(f"{'Ticker':<10} {'Reason':<40}")
+        print("-" * 60)
+        for f in failed_tickers:
+            print(f"{f['Ticker']:<10} {f['Reason']:<40}")
+        print("-" * 60)
+        return
+
     # Prepare Benchmark Data
     try:
-        qqq_df = daily_data['QQQ'].dropna(how='all')
-        spy_df = daily_data['SPY'].dropna(how='all')
-        qqq_prep = prepare_benchmark(qqq_df, 'QQQ')
-        spy_prep = prepare_benchmark(spy_df, 'SPY')
+        # Check if QQQ/SPY exist
+        if isinstance(daily_data.columns, pd.MultiIndex):
+            qqq_df = daily_data['QQQ'].dropna(how='all') if 'QQQ' in daily_data.columns.get_level_values(0) else pd.DataFrame()
+            spy_df = daily_data['SPY'].dropna(how='all') if 'SPY' in daily_data.columns.get_level_values(0) else pd.DataFrame()
+        else:
+            # Single ticker case usually implies we requested one ticker or QQQ/SPY only.
+            # If we requested multiple, yfinance returns MultiIndex.
+            qqq_df = pd.DataFrame() # Fallback
+            spy_df = pd.DataFrame()
+
+        if qqq_df.empty or spy_df.empty:
+             print("[Warning] QQQ or SPY data missing. Benchmark features may be incomplete.")
+
+        qqq_prep = prepare_benchmark(qqq_df, 'QQQ') if not qqq_df.empty else pd.DataFrame()
+        spy_prep = prepare_benchmark(spy_df, 'SPY') if not spy_df.empty else pd.DataFrame()
     except Exception as e:
         print(f"[Error] Failed to prepare benchmark data: {e}")
         return
 
     results = []
+    failed_tickers = []
 
     for t in tickers:
         try:
             # Handle Single Level Column if only one ticker (unlikely due to QQQ/SPY but safe to check)
             if isinstance(daily_data.columns, pd.MultiIndex):
-                if t not in daily_data.columns.get_level_values(0): continue
+                if t not in daily_data.columns.get_level_values(0):
+                    failed_tickers.append({'Ticker': t, 'Reason': 'Data Missing in Batch Download'})
+                    continue
                 df_t_daily = daily_data[t].copy()
             else:
-                if t != daily_data.name: continue # Should not happen with multiple tickers
+                # Fallback for single ticker download scenario
+                if t != daily_data.name and t != 'QQQ' and t != 'SPY': # Heuristic check
+                     # If names don't match (and not testing QQQ/SPY explicitly), it's missing
+                     pass
                 df_t_daily = daily_data.copy()
 
-            if df_t_daily.empty or len(df_t_daily) < 50: continue
+            if df_t_daily.empty:
+                failed_tickers.append({'Ticker': t, 'Reason': 'Download Failed / Empty Data'})
+                continue
+
+            if len(df_t_daily) < 50:
+                failed_tickers.append({'Ticker': t, 'Reason': f'Insufficient Data (Rows={len(df_t_daily)} < 50)'})
+                continue
 
             df_t_intra = pd.DataFrame()
             if not intra_data.empty and isinstance(intra_data.columns, pd.MultiIndex) and t in intra_data.columns.get_level_values(0):
@@ -297,7 +348,9 @@ def generate_report():
             else:
                 feat_row = build_features_latest(df_t_daily, spy_prep, 'SPY', NON_TECH_FEATURES)
 
-            if feat_row is None: continue
+            if feat_row is None:
+                failed_tickers.append({'Ticker': t, 'Reason': 'Feature Building Failed / Benchmark Data Issue'})
+                continue
 
             # AI Prediction
             probs = {}
@@ -334,8 +387,8 @@ def generate_report():
                     p = models['dip'].predict_proba(legacy_feats)[0][1]
                     probs['dip'] = f"{p:.0%}"
                     probs['dip_val'] = p
-                except:
-                    print(f"[{t}] Dip model error: {e}") # 加入此行來捕獲具體錯誤
+                except Exception as e:
+                    print(f"[{t}] Dip model error: {e}")
                     probs['dip'] = "-"
                     probs['dip_val'] = 0.0
             else:
@@ -395,6 +448,7 @@ def generate_report():
             })
 
         except Exception as e:
+            failed_tickers.append({'Ticker': t, 'Reason': f'Runtime Error: {str(e)}'})
             # print(f"Error processing {t}: {e}")
             continue
 
@@ -423,6 +477,19 @@ def generate_report():
         print(f"{r['Ticker']:<8} {r['Tag']:<6} {r['Regime']:<12} {r['Gap%']*100:>7.2f}% {r['Price']:>9.2f} {r['Status']:<16} {r['Action']:<12} {r['Sell%']:>6} {r['Mom%']:>6} {r['Dip%']:>6} {r['ATR%']*100:>5.1f}% {r['Vol']:>5} {r['Size']:>5} {r['Note']:<15}")
 
     print("-" * 155)
+
+    # Print Data Anomaly List
+    if failed_tickers:
+        print("\n⚠️  Data Anomaly List")
+        print("-" * 60)
+        print(f"{'Ticker':<10} {'Reason':<40}")
+        print("-" * 60)
+        for f in failed_tickers:
+            print(f"{f['Ticker']:<10} {f['Reason']:<40}")
+        print("-" * 60)
+        print(f"Total Anomalies: {len(failed_tickers)}")
+        print("-" * 155)
+
     csv_path = os.path.join(OUTPUT_DIR, f'daily_signals_v6.2.6_{datetime.now().strftime("%Y%m%d")}.csv')
     pd.DataFrame(results).to_csv(csv_path, index=False)
     print(f"Total Scanned: {len(results)} | [Saved] {csv_path}")
