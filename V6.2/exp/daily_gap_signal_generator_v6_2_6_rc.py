@@ -335,6 +335,7 @@ def generate_report():
                     probs['dip'] = f"{p:.0%}"
                     probs['dip_val'] = p
                 except:
+                    print(f"[{t}] Dip model error: {e}") # 加入此行來捕獲具體錯誤
                     probs['dip'] = "-"
                     probs['dip_val'] = 0.0
             else:
