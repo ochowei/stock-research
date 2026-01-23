@@ -330,15 +330,23 @@ def generate_report():
             else: probs['mom'] = "-"
 
             if models['dip']:
-                try: probs['dip'] = f"{models['dip'].predict_proba(legacy_feats)[0][1]:.0%}"
-                except: probs['dip'] = "-"
-            else: probs['dip'] = "-"
+                try:
+                    p = models['dip'].predict_proba(legacy_feats)[0][1]
+                    probs['dip'] = f"{p:.0%}"
+                    probs['dip_val'] = p
+                except:
+                    probs['dip'] = "-"
+                    probs['dip_val'] = 0.0
+            else:
+                probs['dip'] = "-"
+                probs['dip_val'] = 0.0
 
             # Position Sizing
             pos_size = get_position_size(sell_prob)
 
             # Decision Logic
             status, action = "Flat", "-"
+            legacy_dip_triggered = False
 
             # Gap Quality Filter (EXP-24)
             vol_ratio = feat_row['Vol_Ratio'].iloc[0]
@@ -361,6 +369,9 @@ def generate_report():
                         status, action = "🟢 MOMENTUM", "HOLD"
                 elif gap_pct < -DIP_THRESHOLD:
                     status, action = "🟢 SMART DIP", "WATCH"
+                    if probs.get('dip_val', 0.0) > DIP_CONFIDENCE_LV:
+                        status, action = "🟢 SMART DIP", "BUY OPEN"
+                        legacy_dip_triggered = True
                 elif gap_pct < -DEFAULT_GAP_THRESHOLD:
                     status, action = "🟡 GAP DOWN", "HOLD"
 
@@ -368,6 +379,7 @@ def generate_report():
 
             note = ""
             if high_vol_warning: note = "⚠️ High_Vol"
+            if legacy_dip_triggered: note += " [Legacy-Dip]"
             if is_tech: note += " [Tech]"
             else: note += " [Non-Tech]"
 
