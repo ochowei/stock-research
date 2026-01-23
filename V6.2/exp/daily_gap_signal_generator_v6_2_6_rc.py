@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import random
 import logging
 import joblib
 import warnings
@@ -133,28 +134,113 @@ def get_calendar_status():
     except: return "Unknown", False
 
 def download_data(tickers):
-    # Ensure QQQ and SPY are included
-    all_tickers = list(set(tickers + ['QQQ', 'SPY']))
-    daily = pd.DataFrame()
-    intra = pd.DataFrame()
+    # Separate Benchmarks and Tickers
+    benchmarks = ['QQQ', 'SPY']
+    unique_tickers = sorted(list(set([t for t in tickers if t not in benchmarks])))
 
-    max_retries = 3
-    for attempt in range(max_retries):
+    daily_dfs = []
+    intra_dfs = []
+
+    # --- Phase 1: Benchmarks (QQQ, SPY) ---
+    print(f">>> Downloading Benchmarks ({', '.join(benchmarks)})...")
+    daily_bm = pd.DataFrame()
+    bm_success = False
+
+    for attempt in range(3):
         try:
-            daily = yf.download(all_tickers, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
-            intra = yf.download(tickers, period="5d", interval="1m", group_by='ticker', prepost=True, progress=False, auto_adjust=True)
-
-            if not daily.empty:
-                return daily, intra
+            daily_bm = yf.download(benchmarks, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
+            if not daily_bm.empty:
+                bm_success = True
+                daily_dfs.append(daily_bm)
+                break
             else:
-                print(f"[Warning] Download attempt {attempt + 1} returned empty data. Retrying...")
+                print(f"[Warning] Benchmarks download returned empty. Attempt {attempt + 1}/3")
         except Exception as e:
-            print(f"[Error] Download attempt {attempt + 1} failed: {e}")
+            print(f"[Error] Benchmarks download failed: {e}")
 
-        if attempt < max_retries - 1:
-            time.sleep(2)
+        if attempt < 2:
+            wait = 10 * (attempt + 1)
+            print(f"Waiting {wait}s before retry...")
+            time.sleep(wait)
 
-    return daily, intra
+    if not bm_success:
+        print("[Critical] Failed to download Benchmarks (QQQ, SPY). Aborting.")
+        return pd.DataFrame(), pd.DataFrame()
+
+    # --- Phase 2: Batched Tickers ---
+    batch_size = 15
+    total_batches = (len(unique_tickers) + batch_size - 1) // batch_size
+
+    for i in range(total_batches):
+        batch = unique_tickers[i*batch_size : (i+1)*batch_size]
+        print(f">>> Processing Batch {i+1}/{total_batches} ({len(batch)} tickers)...")
+
+        batch_daily = pd.DataFrame()
+        batch_intra = pd.DataFrame()
+        batch_success = False
+
+        for attempt in range(3):
+            try:
+                # Daily
+                batch_daily = yf.download(batch, period="3mo", interval="1d", group_by='ticker', progress=False, auto_adjust=True)
+
+                # Intra (Only for actual tickers, not benchmarks)
+                batch_intra = yf.download(batch, period="5d", interval="1m", group_by='ticker', prepost=True, progress=False, auto_adjust=True)
+
+                if not batch_daily.empty:
+                    # Fix Single Ticker MultiIndex Issue
+                    if len(batch) == 1:
+                        if not isinstance(batch_daily.columns, pd.MultiIndex):
+                            batch_daily.columns = pd.MultiIndex.from_product([batch, batch_daily.columns])
+                        if not batch_intra.empty and not isinstance(batch_intra.columns, pd.MultiIndex):
+                            batch_intra.columns = pd.MultiIndex.from_product([batch, batch_intra.columns])
+
+                    daily_dfs.append(batch_daily)
+                    if not batch_intra.empty:
+                        intra_dfs.append(batch_intra)
+
+                    batch_success = True
+                    break
+                else:
+                    print(f"[Warning] Batch {i+1} empty. Retrying...")
+
+            except Exception as e:
+                print(f"[Error] Batch {i+1} failed: {e}")
+
+            if attempt < 2:
+                wait = 10 * (attempt + 1)
+                print(f"Waiting {wait}s before retry...")
+                time.sleep(wait)
+
+        if not batch_success:
+            print(f"[Error] Skipping Batch {i+1} after max retries.")
+
+        # Random Delay between batches
+        if i < total_batches - 1:
+            sleep_time = random.randint(2, 5)
+            # print(f"Sleeping {sleep_time}s...")
+            time.sleep(sleep_time)
+
+    # --- Phase 3: Merge ---
+    print(">>> Merging Data...")
+    daily_all = pd.DataFrame()
+    intra_all = pd.DataFrame()
+
+    try:
+        if daily_dfs:
+            daily_all = pd.concat(daily_dfs, axis=1)
+            # Drop duplicates if any
+            daily_all = daily_all.loc[:, ~daily_all.columns.duplicated()]
+
+        if intra_dfs:
+            intra_all = pd.concat(intra_dfs, axis=1)
+            intra_all = intra_all.loc[:, ~intra_all.columns.duplicated()]
+
+    except Exception as e:
+        print(f"[Error] Data merge failed: {e}")
+        return pd.DataFrame(), pd.DataFrame()
+
+    return daily_all, intra_all
 
 def prepare_benchmark(bm_df, prefix):
     df = bm_df.copy()
