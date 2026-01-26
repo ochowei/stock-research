@@ -1,6 +1,5 @@
 name: Manual Gap Signal Generator
 
-# 設定觸發條件為「手動點擊按鈕」(workflow_dispatch)
 on:
   workflow_dispatch:
     inputs:
@@ -10,46 +9,66 @@ on:
         default: ''
         
   schedule:
-    # UTC 13:15
-    # 夏令時間 (EDT, 3月-11月): 對應美東 09:15 AM (開盤前 15 分鐘)
-    # 冬令時間 (EST, 11月-3月): 對應美東 08:15 AM (開盤前 1 小時 15 分鐘)
     - cron: '6 14 * * 1-5'
 
 jobs:
+  # 這是原本執行的 v6.2.6_rc 版本
   run-gap-signal:
     runs-on: ubuntu-latest
-    
     steps:
-      # 1. 下載程式碼
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 設定 Python 環境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'  # <--- 請將 3.10 改為 3.12
+          python-version: '3.12'
           cache: 'pip'
 
-      # 3. 安裝依賴套件
-      # 改為讀取 requirements.txt 以支援 xgboost, joblib, pandas_ta 等新套件
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r V6.2/exp/requirements.txt
 
-      # 4. 執行腳本
-      # 執行 V6.2 版本的 Daily Gap Signal Generator
-      - name: Run Daily Gap Signal Generator
+      - name: Run Daily Gap Signal Generator RC
         working-directory: ./V6.2/exp
         run: |
           python daily_gap_signal_generator_v6_2_6_rc.py
 
-      # 5. 上傳產出的 CSV 檔案作為 Artifact
-      # 下載路徑更新為 V6.2 的輸出目錄
-      - name: Upload Results
+      - name: Upload Results RC
         uses: actions/upload-artifact@v4
         with:
-          name: gap-signal-report
+          name: gap-signal-report-v6.2.6-rc
+          path: V6.2/exp/output/*.csv
+          retention-days: 5
+
+  # --- 這是新增的 Job：執行 v6.2.1 版本 ---
+  run-gap-signal-v6-2-1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r V6.2/exp/requirements.txt
+
+      - name: Run Daily Gap Signal Generator v6.2.1
+        working-directory: ./V6.2/exp
+        run: |
+          # 執行你指定的版本
+          python daily_gap_signal_generator_v6_2_1.py
+
+      - name: Upload Results v6.2.1
+        uses: actions/upload-artifact@v4
+        with:
+          name: gap-signal-report-v6.2.1
           path: V6.2/exp/output/*.csv
           retention-days: 5
