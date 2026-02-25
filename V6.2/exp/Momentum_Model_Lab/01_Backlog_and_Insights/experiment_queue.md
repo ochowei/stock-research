@@ -4,11 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-02: Sector Relative Strength (Orthogonal Alpha)**
-* **Hypothesis:** Momentum signals are more reliable when the underlying Sector (e.g., XLK, XLF) is also in a strong trend (Sector RSI > 50). "Lone Wolf" breakouts are prone to failure.
-* **Implementation:** Inject `Sector_RSI` and `Stock_vs_Sector_RelStrength` features.
-* **Goal:** Increase Win Rate by filtering out false positives in weak sectors.
-
 ### **EXP-03: Volume Microstructure (False Breakout Filter)**
 * **Hypothesis:** High price momentum accompanied by low or declining volume ("Fake Breakout") has low persistence.
 * **Implementation:** Add `Vol_MA5_Slope` and `Vol_Ratio` (Day/Avg) as features or hard filters.
@@ -25,6 +20,11 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 * **Goal:** Find the optimal sensitivity balance between noise and lag.
 
 ## ⚫ Done
+
+### **EXP-02: Sector Relative Strength (Orthogonal Alpha)**
+* **Result:** Fail (Win Rate 57.51% vs Baseline 57.59%).
+* **Key Finding:** Sector features (Sector RSI, Rel Strength) did not improve performance and added complexity (data fetching issues). Simple RSI remains superior.
+* **Date:** 2025-05-18
 
 ### **EXP-01: Baseline Reproduction (V6.1 Parity)**
 * **Result:** Success (Win Rate 57.59%, Avg Return 0.975%).
