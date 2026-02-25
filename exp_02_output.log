@@ -1,0 +1,42 @@
+[                       0%                       ][*                      2%                       ]  2 of 96 completed[*                      3%                       ]  3 of 96 completed[**                     4%                       ]  4 of 96 completed[**                     5%                       ]  5 of 96 completed[***                    6%                       ]  6 of 96 completed[***                    7%                       ]  7 of 96 completed[****                   8%                       ]  8 of 96 completed[****                   9%                       ]  9 of 96 completed[*****                 10%                       ]  10 of 96 completed[*****                 11%                       ]  11 of 96 completed[******                12%                       ]  12 of 96 completed[*******               14%                       ]  13 of 96 completed[*******               15%                       ]  14 of 96 completed[********              16%                       ]  15 of 96 completed[********              17%                       ]  16 of 96 completed[*********             18%                       ]  17 of 96 completed[*********             19%                       ]  18 of 96 completed[**********            20%                       ]  19 of 96 completed[**********            21%                       ]  20 of 96 completed[***********           22%                       ]  21 of 96 completed[***********           23%                       ]  22 of 96 completed[************          24%                       ]  23 of 96 completed[************          25%                       ]  24 of 96 completed[************          26%                       ]  25 of 96 completed[*************         27%                       ]  26 of 96 completed[*************         28%                       ]  27 of 96 completed[**************        29%                       ]  28 of 96 completed[**************        30%                       ]  29 of 96 completed[***************       31%                       ]  30 of 96 completed[***************       32%                       ]  31 of 96 completed[****************      33%                       ]  32 of 96 completed[****************      34%                       ]  33 of 96 completed[*****************     35%                       ]  34 of 96 completed[*****************     36%                       ]  35 of 96 completed[******************    38%                       ]  36 of 96 completed[*******************   39%                       ]  37 of 96 completed[*******************   40%                       ]  38 of 96 completed[********************  41%                       ]  39 of 96 completed[********************  42%                       ]  40 of 96 completed[********************* 43%                       ]  41 of 96 completed[********************* 44%                       ]  42 of 96 completed[**********************45%                       ]  43 of 96 completed[**********************46%                       ]  44 of 96 completed[**********************47%                       ]  45 of 96 completed[**********************48%                       ]  46 of 96 completed[**********************49%                       ]  47 of 96 completed[**********************50%                       ]  48 of 96 completed[**********************51%                       ]  49 of 96 completed[**********************52%                       ]  50 of 96 completed[**********************53%                       ]  51 of 96 completed[**********************54%*                      ]  52 of 96 completed[**********************55%*                      ]  53 of 96 completed[**********************56%**                     ]  54 of 96 completedHTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: FI"}}}
+$FI: possibly delisted; no timezone found
+[**********************57%**                     ]  55 of 96 completed[**********************58%***                    ]  56 of 96 completed[**********************59%***                    ]  57 of 96 completed[**********************60%****                   ]  58 of 96 completed[**********************61%****                   ]  59 of 96 completed[**********************62%*****                  ]  60 of 96 completed[**********************64%******                 ]  61 of 96 completed[**********************65%******                 ]  62 of 96 completed[**********************66%*******                ]  63 of 96 completed[**********************67%*******                ]  64 of 96 completed[**********************68%********               ]  65 of 96 completed[**********************69%********               ]  66 of 96 completed[**********************70%*********              ]  67 of 96 completed[**********************71%*********              ]  68 of 96 completed[**********************72%**********             ]  69 of 96 completed[**********************73%**********             ]  70 of 96 completed[**********************74%***********            ]  71 of 96 completed[**********************75%***********            ]  72 of 96 completed[**********************76%***********            ]  73 of 96 completed[**********************77%************           ]  74 of 96 completed[**********************78%************           ]  75 of 96 completed[**********************79%*************          ]  76 of 96 completed[**********************80%*************          ]  77 of 96 completed[**********************81%**************         ]  78 of 96 completed[**********************82%**************         ]  79 of 96 completed[**********************83%***************        ]  80 of 96 completed[**********************84%***************        ]  81 of 96 completed[**********************85%****************       ]  82 of 96 completed[**********************86%****************       ]  83 of 96 completed[**********************88%*****************      ]  84 of 96 completed[**********************89%******************     ]  85 of 96 completed[**********************90%******************     ]  86 of 96 completed[**********************91%*******************    ]  87 of 96 completed[**********************92%*******************    ]  88 of 96 completed[**********************93%********************   ]  89 of 96 completed[**********************94%********************   ]  90 of 96 completed[**********************95%*********************  ]  91 of 96 completed[**********************96%*********************  ]  92 of 96 completed[**********************97%********************** ]  93 of 96 completed[**********************98%********************** ]  94 of 96 completed[**********************99%***********************]  95 of 96 completed[*********************100%***********************]  96 of 96 completed[*********************100%***********************]  96 of 96 completed
+
+1 Failed download:
+['FI']: possibly delisted; no timezone found
+=== EXP-02: Sector Relative Strength (Momentum Model) ===
+Downloading data for 96 tickers (Stocks + ETFs + VIX)...
+  - Stock Data Rows: 125081
+  - ETF Data Rows: 18084
+  - VIX Data Rows: 1507
+Calculating Sector ETF Indicators...
+
+Building features...
+Total Gap Signals Found: 39549
+Training Samples: 24690
+Testing Samples : 14859
+
+Training Momentum XGBoost Model (with Sector Features)...
+
+============================================================
+MOMENTUM MODEL RESULTS (EXP-02 SECTOR STRENGTH)
+============================================================
+Metric               Baseline (All)       Model (Filter)       Diff
+---------------------------------------------------------------------------
+Count                14859                7060
+Win Rate              47.48%               57.51%              +10.03%
+Avg Return           -0.072%               0.944%              +1.016%
+---------------------------------------------------------------------------
+
+[Feature Importance]
+RSI_14              0.337047
+Rel_Strength_RSI    0.138234
+VIX                 0.132421
+Sector_RSI          0.117503
+ATR_Pct             0.100252
+Vol_Ratio           0.087519
+Gap_Pct             0.087025
+dtype: float32
+
+[Saved] Model saved to: /app/V6.2/exp/Momentum_Model_Lab/03_Experiments/EXP_02_Sector_Relative_Strength/03_Output/momentum_model_sector.joblib
+Chart saved to momentum_equity.png
