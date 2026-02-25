@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-20: EXP-03 Volume Microstructure (False Breakout Filter)
+
+*   **CRITICAL FIX:** Corrected a **Data Leakage** in the EXP-01 baseline methodology. The previous "57.6% Win Rate" was a result of look-ahead bias (using `Close[T]` to predict `Open[T]` returns).
+*   **True Baseline:** The raw "Buy All Gaps" strategy has a negative expected return (-0.084%) and a Win Rate of 47.43%.
+*   **Volume Factor:** Adding Volume Trend (`Vol_MA5_Slope`) improves Win Rate by +1.2% (to 48.65%), making it one of the strongest predictors alongside `Vol_Ratio` and `VIX`.
+*   **Action:** Continue searching for stronger alpha sources (e.g., Crypto Context, News Sentiment) as the current Momentum + Volume model is insufficient for profitability.
+
 ## 2025-05-18: EXP-02 Sector Relative Strength (Orthogonal Alpha)
 
 *   **Lesson:** Adding explicit Sector context (`Sector_RSI`, `Rel_Strength`) did **not** improve Win Rate (57.51% vs 57.59% Baseline).
