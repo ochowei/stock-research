@@ -4,11 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-01: Baseline Reproduction (V6.1 Parity)**
-* **Hypothesis:** Re-training the momentum model within the new `Lab` structure using exact V6.1 parameters and features will replicate historical performance.
-* **Target Metrics:** Win Rate > 55%, Avg Return > 0.25%.
-* **Goal:** Establish a "Control" model (The Baseline) to measure future improvements against.
-
 ### **EXP-02: Sector Relative Strength (Orthogonal Alpha)**
 * **Hypothesis:** Momentum signals are more reliable when the underlying Sector (e.g., XLK, XLF) is also in a strong trend (Sector RSI > 50). "Lone Wolf" breakouts are prone to failure.
 * **Implementation:** Inject `Sector_RSI` and `Stock_vs_Sector_RelStrength` features.
@@ -31,4 +26,7 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## ⚫ Done
 
-(Empty - Awaiting First Experiment Run)
+### **EXP-01: Baseline Reproduction (V6.1 Parity)**
+* **Result:** Success (Win Rate 57.59%, Avg Return 0.975%).
+* **Key Finding:** The V6.1 model (RSI, ATR, Vol_Ratio) is highly effective in 2024-2025. RSI is the dominant feature (47% importance).
+* **Date:** 2025-05-15
