@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-21: EXP-03 Volume Microstructure (False Breakout Filter)
+
+*   **Lesson:** Adding pre-gap volume trend (`Vol_MA5_Slope`) to filter "Fake Breakouts" failed to improve performance (Win Rate 57.84% vs 57.96% Baseline).
+*   **Key Insight:** The `Vol_MA5_Slope` feature had the lowest importance (0.09) among all features. `RSI_14` (0.41) and `VIX` (0.17) remain dominant. This suggests that the immediate liquidity shock (measured by `Vol_Ratio`) is more relevant than the multi-day volume trend leading up to the event.
+*   **Operational Risk:** Low operational risk (internal calculation), but adds unnecessary complexity for no gain.
+*   **Action:** Reject `Vol_MA5_Slope`. Maintain the existing `Vol_Ratio` feature and focus on broader macro/crypto context (EXP-04) for alpha generation.
+
 ## 2025-05-18: EXP-02 Sector Relative Strength (Orthogonal Alpha)
 
 *   **Lesson:** Adding explicit Sector context (`Sector_RSI`, `Rel_Strength`) did **not** improve Win Rate (57.51% vs 57.59% Baseline).
