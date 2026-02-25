@@ -4,17 +4,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-04: Crypto Context Integration (Risk-On Regime)**
-* **Hypothesis:** Momentum strategies perform better in "Risk-On" environments. Crypto trends (BTC/ETH) serve as a leading indicator for high-beta risk appetite.
-* **Implementation:** Add `BTC_Change` and `BTC_Trend_Score` as global context features.
-* **Goal:** Optimize position sizing or entry timing based on global risk sentiment.
-
 ### **EXP-05: Dynamic Window Sensitivity (Lookback Tuning)**
 * **Hypothesis:** The standard 14-day RSI/Momentum window may be too slow for the current high-volatility regime.
 * **Implementation:** Test shorter (5D, 10D) vs longer (20D, 50D) lookback windows.
 * **Goal:** Find the optimal sensitivity balance between noise and lag.
 
 ## ⚫ Done
+
+### **EXP-04: Crypto Context Integration (Risk-On Regime)**
+* **Result:** Fail (Win Rate 46.86% vs Baseline 48.60%).
+* **Key Finding:** Adding `BTC_Change`, `BTC_Trend_Score`, and `BTC_RSI` *with proper lookahead prevention* degraded performance. More importantly, this experiment revealed that the **Baseline Model (V6.1) had a severe Lookahead Bias** (using `Close[T]` for prediction). The true baseline Win Rate is ~48%, not 58%.
+* **Date:** 2025-05-25
 
 ### **EXP-03: Volume Microstructure (False Breakout Filter)**
 * **Result:** Fail (Win Rate 57.84% vs Baseline 57.96%).

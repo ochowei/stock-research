@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-25: EXP-04 Crypto Context Integration (Risk-On Regime)
+
+*   **Lesson:** **Lookahead Bias Detected.** The V6.1 Baseline used `Close[T]` based features (e.g., RSI) to predict Day `T` return, inflating the win rate to ~58%. When corrected (using strictly `T-1` data), the true baseline win rate drops to ~48%.
+*   **Result:** Adding Bitcoin context (`BTC_Change`, `BTC_Trend_Score`) to the *corrected* baseline further degraded performance (Win Rate 46.86%). The crypto features introduced noise rather than predictive signal for the next day's gap continuation.
+*   **Operational Risk:** High risk of deploying flawed models if feature calculation timing is not rigorously validated.
+*   **Action:** **Reject** Crypto features. **Prioritize** a full audit of all feature engineering pipelines to eliminate lookahead bias.
+
 ## 2025-05-21: EXP-03 Volume Microstructure (False Breakout Filter)
 
 *   **Lesson:** Adding pre-gap volume trend (`Vol_MA5_Slope`) to filter "Fake Breakouts" failed to improve performance (Win Rate 57.84% vs 57.96% Baseline).
