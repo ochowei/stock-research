@@ -4,11 +4,6 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-03: Volume Microstructure (False Breakout Filter)**
-* **Hypothesis:** High price momentum accompanied by low or declining volume ("Fake Breakout") has low persistence.
-* **Implementation:** Add `Vol_MA5_Slope` and `Vol_Ratio` (Day/Avg) as features or hard filters.
-* **Goal:** Improve Precision (Win Rate) by avoiding liquidity traps.
-
 ### **EXP-04: Crypto Context Integration (Risk-On Regime)**
 * **Hypothesis:** Momentum strategies perform better in "Risk-On" environments. Crypto trends (BTC/ETH) serve as a leading indicator for high-beta risk appetite.
 * **Implementation:** Add `BTC_Change` and `BTC_Trend_Score` as global context features.
@@ -20,6 +15,11 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 * **Goal:** Find the optimal sensitivity balance between noise and lag.
 
 ## ⚫ Done
+
+### **EXP-03: Volume Microstructure (False Breakout Filter)**
+* **Result:** Fail (Win Rate 57.84% vs Baseline 57.96%).
+* **Key Finding:** Adding pre-gap volume trend (`Vol_MA5_Slope`) slightly degraded performance. The feature had the lowest importance (0.09). Simple `Vol_Ratio` (Gap Volume) is sufficient.
+* **Date:** 2025-05-21
 
 ### **EXP-02: Sector Relative Strength (Orthogonal Alpha)**
 * **Result:** Fail (Win Rate 57.51% vs Baseline 57.59%).
