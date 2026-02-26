@@ -4,12 +4,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-06: Mean Reversion Signal (Gap Fade)**
-* **Hypothesis:** High Momentum (RSI/ROC) at T-1 predicts gap fading (Reversal) rather than continuation.
-* **Implementation:** Invert the strategy: Short Open -> Buy Close on high-momentum gaps.
-* **Goal:** Validate if the negative alpha from EXP-05 can be turned into positive alpha.
+### **EXP-07: High Momentum Short Strategy - Volume Filter**
+* **Hypothesis:** High volume gaps on already extended stocks (RSI > 70) represent "Exhaustion Gaps" and reverse more reliably than low volume gaps.
+* **Implementation:** Apply `Vol_Ratio > 2.0` filter to the High Momentum Short Strategy (EXP-06).
+* **Goal:** Increase Win Rate > 55% and Avg Return > 0.30%.
 
 ## ⚫ Done
+
+### **EXP-06: Mean Reversion Signal (Gap Fade)**
+* **Result:** Success (Win Rate 53.7%, Avg Return +0.20% for Short Strategy).
+* **Key Finding:** High Momentum (RSI > 70) gaps fail to continue (Long Win Rate 45.9%) and revert instead. Shorting these gaps yields positive expectancy (+0.20%), outperforming the Baseline Long strategy (-0.11%).
+* **Date:** 2025-05-30
 
 ### **EXP-05: Dynamic Window Sensitivity (Lookback Tuning)**
 * **Result:** Fail (Win Rate 33.6% vs Baseline 47.4%).
