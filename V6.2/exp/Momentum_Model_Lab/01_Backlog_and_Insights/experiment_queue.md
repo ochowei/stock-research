@@ -4,12 +4,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-05: Dynamic Window Sensitivity (Lookback Tuning)**
-* **Hypothesis:** The standard 14-day RSI/Momentum window may be too slow for the current high-volatility regime.
-* **Implementation:** Test shorter (5D, 10D) vs longer (20D, 50D) lookback windows.
-* **Goal:** Find the optimal sensitivity balance between noise and lag.
+### **EXP-06: Mean Reversion Signal (Gap Fade)**
+* **Hypothesis:** High Momentum (RSI/ROC) at T-1 predicts gap fading (Reversal) rather than continuation.
+* **Implementation:** Invert the strategy: Short Open -> Buy Close on high-momentum gaps.
+* **Goal:** Validate if the negative alpha from EXP-05 can be turned into positive alpha.
 
 ## ⚫ Done
+
+### **EXP-05: Dynamic Window Sensitivity (Lookback Tuning)**
+* **Result:** Fail (Win Rate 33.6% vs Baseline 47.4%).
+* **Key Finding:** Momentum indicators (RSI, ROC) at T-1 are **counter-indicators** for Gap Continuation. High momentum predicts gap fading (reversal). Shorter windows (10D) captured this negative signal better than longer windows (50D).
+* **Date:** 2025-05-27
 
 ### **EXP-04: Crypto Context Integration (Risk-On Regime)**
 * **Result:** Fail (Win Rate 53.82% vs Baseline 56.24%).
