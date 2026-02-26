@@ -4,17 +4,17 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-04: Crypto Context Integration (Risk-On Regime)**
-* **Hypothesis:** Momentum strategies perform better in "Risk-On" environments. Crypto trends (BTC/ETH) serve as a leading indicator for high-beta risk appetite.
-* **Implementation:** Add `BTC_Change` and `BTC_Trend_Score` as global context features.
-* **Goal:** Optimize position sizing or entry timing based on global risk sentiment.
-
 ### **EXP-05: Dynamic Window Sensitivity (Lookback Tuning)**
 * **Hypothesis:** The standard 14-day RSI/Momentum window may be too slow for the current high-volatility regime.
 * **Implementation:** Test shorter (5D, 10D) vs longer (20D, 50D) lookback windows.
 * **Goal:** Find the optimal sensitivity balance between noise and lag.
 
 ## ⚫ Done
+
+### **EXP-04: Crypto Context Integration (Risk-On Regime)**
+* **Result:** Fail (Win Rate 53.82% vs Baseline 56.24%).
+* **Key Finding:** Adding Crypto Context features (`BTC_RSI`, `ETH_Ret`) significantly degraded performance (-2.42% Win Rate). Despite high feature importance, they introduced noise/overfitting and failed to generalize to the 2024-2025 OOS period.
+* **Date:** 2025-05-24
 
 ### **EXP-03: Volume Microstructure (False Breakout Filter)**
 * **Result:** Fail (Win Rate 57.84% vs Baseline 57.96%).

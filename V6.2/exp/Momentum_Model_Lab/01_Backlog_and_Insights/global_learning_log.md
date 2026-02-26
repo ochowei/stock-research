@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-24: EXP-04 Crypto Context Integration (Risk-On Regime)
+
+*   **Lesson:** Adding Crypto (`BTC_RSI`, `ETH_Ret`) features **significantly degraded** performance (Win Rate 53.82% vs 56.24% Baseline).
+*   **Key Insight:** Despite high feature importance (BTC_RSI ranked 2nd), the OOS performance collapsed. This indicates severe **Overfitting** during the training period (2020-2023) where Crypto/Equity correlation was high. In the current regime (2024-2025), Crypto is an idiosyncratic asset class and not a reliable leading indicator for broad Tech momentum.
+*   **Operational Risk:** Low (standard API), but predictive risk is high.
+*   **Action:** Reject Crypto Context features for the general model. Focus on internal market breadth or single-stock metrics.
+
 ## 2025-05-21: EXP-03 Volume Microstructure (False Breakout Filter)
 
 *   **Lesson:** Adding pre-gap volume trend (`Vol_MA5_Slope`) to filter "Fake Breakouts" failed to improve performance (Win Rate 57.84% vs 57.96% Baseline).
