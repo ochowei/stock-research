@@ -2,6 +2,15 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-30: EXP-06 Mean Reversion Signal (Gap Fade)
+
+*   **Lesson:** High Momentum (RSI > 70) at T-1 predicts Gap Fading (Reversal) rather than Continuation. Shorting these gaps yields a 53.7% Win Rate and +0.20% Avg Return, while buying them results in a -0.20% loss.
+*   **Key Insight:** Momentum is a double-edged sword. Extreme strength (RSI > 70) often marks exhaustion. The "Buy Strength" strategy fails in this regime. This confirms the hypothesis from EXP-05 that T-1 momentum is a counter-indicator for gap continuation.
+*   **Operational Risk:** None (internal calculation).
+*   **Action:**
+    1.  **Immediate:** Add `RSI_14 <= 70` filter to the main Long model to reject low-quality setups.
+    2.  **Future:** Develop a dedicated Short strategy for High Mom/High Vol gaps (EXP-07).
+
 ## 2025-05-27: EXP-05 Dynamic Window Sensitivity (Lookback Tuning)
 
 *   **Lesson:** Shorter lookback windows (5, 10, 20 days) **failed** to improve Momentum Continuation performance, with all windows significantly underperforming the "Buy All Gaps" baseline (33% vs 47%).
