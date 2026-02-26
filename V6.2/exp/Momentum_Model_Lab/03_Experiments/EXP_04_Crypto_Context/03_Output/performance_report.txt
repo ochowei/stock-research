@@ -1,0 +1,6 @@
+EXP-04 RESULTS COMPARISON (2024-2025)
+Baseline Win Rate: 0.5624
+Crypto Win Rate  : 0.5382
+Diff Win Rate    : -0.0242
+Baseline Avg Ret : 0.0121
+Crypto Avg Ret   : 0.0103
