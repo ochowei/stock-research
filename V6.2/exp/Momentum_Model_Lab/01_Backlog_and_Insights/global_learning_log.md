@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-05-27: EXP-05 Dynamic Window Sensitivity (Lookback Tuning)
+
+*   **Lesson:** Shorter lookback windows (5, 10, 20 days) **failed** to improve Momentum Continuation performance, with all windows significantly underperforming the "Buy All Gaps" baseline (33% vs 47%).
+*   **Key Insight:** Momentum indicators (RSI, ROC) at T-1 are **negative predictors** for Gap Continuation strategies (Buy Open -> Sell Close). High momentum at T-1 consistently predicts Gap Fading (Reversal) at T Open.
+*   **Operational Risk:** None.
+*   **Action:** Pivot strategy from Momentum Continuation to **Mean Reversion (Gap Fade)**. Do not implement shorter windows for continuation.
+
 ## 2025-05-24: EXP-04 Crypto Context Integration (Risk-On Regime)
 
 *   **Lesson:** Adding Crypto (`BTC_RSI`, `ETH_Ret`) features **significantly degraded** performance (Win Rate 53.82% vs 56.24% Baseline).
