@@ -2,6 +2,15 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-06-05: EXP-08 High Momentum Short Strategy - Candle Wick Analysis
+
+*   **Lesson:** Implementing a tight Stop Loss (1.0% from Open) on High Momentum Short strategies (`RSI > 70`) significantly improved Average Return (+0.30% vs +0.20% Baseline) by mitigating large losses from 'Breakaway Gaps'.
+*   **Key Insight:** While the Win Rate dropped drastically (30% vs 54%), the Net Profit (Total R) increased by ~48%. This confirms that the "High Momentum Short" trade relies on catching the fat tail of reversals, and avoiding the fat tail of continuations is critical.
+*   **Operational Risk:** Execution risk. Limit orders or strict Stop Market orders are required at the Open.
+*   **Action:**
+    1.  **Immediate:** Update production Short Strategy logic to include a `1.0%` hard Stop Loss.
+    2.  **Future:** Investigate trailing stops to recover some of the lost Win Rate.
+
 ## 2025-06-02: EXP-07 High Momentum Short Strategy - Volume Filter
 
 *   **Lesson:** High Volume (`Vol_Ratio > 2.0`) does **not** reliably indicate "Exhaustion" in High Momentum (`RSI > 70`) gaps.

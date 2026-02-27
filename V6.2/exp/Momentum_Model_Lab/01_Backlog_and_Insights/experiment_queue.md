@@ -4,13 +4,12 @@ This queue is prioritized based on the `initial_diagnosis.md` which highlights t
 
 ## 🟢 Ready to Start
 
-### **EXP-08: High Momentum Short Strategy - Candle Wick Analysis**
-* **Hypothesis:** Reversals often leave "Upper Wicks" (failed breakouts). If the gap opens and immediately fails (High - Open < 0.2% * OR * Close < Open), it confirms the reversal.
-* **Implementation:** Filter Gap Ups where `(High - Open) / Open < 0.002` (Small Upper Wick) or `Close < Open` (Red Candle). This requires intraday data or Open-High relationship. *Simpler:* Use `(Open - Low) / Open > 0.005` (Large Lower Wick = Buyers stepping in?) No.
-* **Refined Hypothesis:** Short the "Shooting Star" or "Doji" gaps.
-* **Goal:** Increase Win Rate > 55% for Short Strategy.
-
 ## ⚫ Done
+
+### **EXP-08: High Momentum Short Strategy - Candle Wick Analysis**
+* **Result:** Success (Win Rate 30.0% vs Baseline 54.1% - but Avg Return +0.306% vs +0.206%).
+* **Key Finding:** Implementing a tight 1.0% Stop Loss from the Open price significantly improved Net Profit (+48% Total Return) by cutting losses on "Breakaway Gaps" that continue to rally.
+* **Date:** 2025-06-05
 
 ### **EXP-07: High Momentum Short Strategy - Volume Filter**
 * **Result:** Fail (Win Rate 54.46% vs Baseline 53.84%).
