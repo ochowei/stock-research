@@ -2,6 +2,13 @@
 
 This document captures cross-experiment insights to build a cumulative knowledge base for the Momentum Model.
 
+## 2025-06-02: EXP-07 High Momentum Short Strategy - Volume Filter
+
+*   **Lesson:** High Volume (`Vol_Ratio > 2.0`) does **not** reliably indicate "Exhaustion" in High Momentum (`RSI > 70`) gaps.
+*   **Key Insight:** The subset of gaps with extreme volume performed almost identically to the baseline (54.46% vs 53.84% Win Rate) but with slightly *lower* Average Return. This suggests that "Blow-off Tops" are either rare or require more than just volume to identify (e.g., price action confirmation).
+*   **Operational Risk:** None.
+*   **Action:** Reject `Vol_Ratio` filter for the Short Strategy. Focus on price structure (e.g., failed breakouts, candle wicks) instead.
+
 ## 2025-05-30: EXP-06 Mean Reversion Signal (Gap Fade)
 
 *   **Lesson:** High Momentum (RSI > 70) at T-1 predicts Gap Fading (Reversal) rather than Continuation. Shorting these gaps yields a 53.7% Win Rate and +0.20% Avg Return, while buying them results in a -0.20% loss.
