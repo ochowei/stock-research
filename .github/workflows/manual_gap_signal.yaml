@@ -9,7 +9,7 @@ on:
         default: ''
         
   schedule:
-    - cron: '6 13 * * 1-5'
+    - cron: '6 14 * * 1-5'
 
 jobs:
   # 這是原本執行的 v6.2.6_rc 版本
